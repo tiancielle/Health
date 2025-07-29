@@ -1,6 +1,4 @@
-// src/pages/auth/LoginPage.jsx
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -11,6 +9,24 @@ export default function LoginPage() {
     e.preventDefault();
     console.log('Connexion avec :', { email, password, role });
     // Ici, vous ajouterez l'appel API de login
+    
+    // Simulation de succès de connexion - redirection vers home
+    alert('Connexion réussie ! (simulation)');
+    window.location.href = '/';
+  };
+
+  const handleBackToHome = () => {
+    window.location.href = '/';
+  };
+
+  const handleSignUp = () => {
+    // Pour l'instant, afficher un message
+    alert('Page d\'inscription en cours de développement');
+  };
+
+  const handleForgotPassword = () => {
+    // Pour l'instant, afficher un message
+    alert('Page de récupération de mot de passe en cours de développement');
   };
 
   return (
@@ -22,7 +38,7 @@ export default function LoginPage() {
       <div
         className="hidden lg:flex lg:w-1/2 bg-cover bg-center relative"
         style={{
-          backgroundImage: "url('/public/images/doctor_bg.png')",
+          backgroundImage: "url('/images/doctor_bg.png')",
         }}
       >
         <div
@@ -49,6 +65,19 @@ export default function LoginPage() {
             boxShadow: '0 20px 40px rgba(77, 137, 177, 0.1)',
           }}
         >
+          {/* Bouton retour */}
+          <div className="mb-4">
+            <button
+              onClick={handleBackToHome}
+              className="flex items-center text-gray-600 hover:text-[#4d89b1] transition-colors"
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Back to Home
+            </button>
+          </div>
+
           {/* Logo et titre */}
           <div className="text-center mb-8">
             <div
@@ -144,7 +173,7 @@ export default function LoginPage() {
             {/* Submit Button */}
             <button
               type="submit"
-              className="w-full py-3 px-6 rounded-xl font-semibold text-white transition-all duration-200 transform hover:scale-[1.02]"
+              className="w-full py-3 px-6 rounded-xl font-semibold text-white transition-all duration-200 transform hover:scale-[1.02] hover:shadow-lg"
               style={{
                 backgroundColor: '#4d89b1',
                 boxShadow: '0 4px 15px rgba(77, 137, 177, 0.3)',
@@ -157,26 +186,26 @@ export default function LoginPage() {
           {/* Lien vers Sign Up */}
           <div className="mt-8 text-center">
             <p className="text-sm text-gray-600">
-              Don’t have an account?{' '}
-              <Link
-                to="/sign-up"
-                className="font-medium"
+              Don't have an account?{' '}
+              <button
+                onClick={handleSignUp}
+                className="font-medium hover:underline"
                 style={{ color: '#4d89b1' }}
               >
                 Sign up as a patient
-              </Link>
+              </button>
             </p>
           </div>
 
           {/* Mot de passe oublié */}
           <div className="mt-4 text-center">
-            <Link
-              to="/forgot-password"
-              className="text-sm"
+            <button
+              onClick={handleForgotPassword}
+              className="text-sm hover:underline"
               style={{ color: '#4d89b1' }}
             >
               Forgot your password?
-            </Link>
+            </button>
           </div>
         </div>
       </div>

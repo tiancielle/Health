@@ -5,6 +5,7 @@ import './App.css'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import HomePage from './pages/public/HomePage'
 import NotFoundPage from './pages/public/NotFoundPage'
+import LoginPage from './pages/auth/LoginPage'
 
 
 function App() {
@@ -16,7 +17,9 @@ function App() {
       <div className='App'>
         <BrowserRouter>
     <Routes>
-          <Route path='/' element={<HomePage/>}/>          
+          <Route path='/' element={<HomePage/>}/>  
+          <Route path='/auth/Login' element={<LoginPage/>} />        
+          <Route path='/auth' element={<LoginPage/>} />
           {/* Futures routes .. */}
           
           <Route path="*" element={<NotFoundPage />} /> {/*  Route 404 */}

@@ -1,20 +1,30 @@
 import React, { useState } from 'react';
 import { Search, MapPin, Calendar, Clock, Star, Shield, Users, Activity, ChevronRight, Menu, X } from 'lucide-react';
-// import { useNavigate } from 'react-router-dom';
 
 export default function HealthHomepage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [location, setLocation] = useState('');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  // const navigate = useNavigate();
+
+  // Fonction pour gérer la navigation vers la page de connexion
+  const handleLoginClick = () => {
+    // Cette fonction sera appelée depuis votre App.js principal
+    // Vous devrez passer une fonction de navigation comme prop
+    window.location.href = '/auth/Login';
+  };
+
+  // Fonction pour gérer la navigation vers la page d'inscription
+  const handleSignUpClick = () => {
+    window.location.href = '/auth/Login';
+  };
 
   const specialties = [
-    { name: 'General Practitioner', image: 'public/images/generalist.jpg', count: '2,847' },
-    { name: 'Dentist', image: 'public/images/dentist.jpg', count: '1,234' },
-    { name: 'Cardiologist', image: 'public/images/Cardiologist.PNG', count: '567' },
-    { name: 'Dermatologist', image: 'public/images/dermatologue.PNG', count: '432' },
-    { name: 'Gynecologist', image: 'public/images/Gynecologist.png', count: '389' },
-    { name: 'Ophthalmologist', image: 'public/images/ophtalmologue.PNG', count: '298' }
+    { name: 'General Practitioner', image: '/images/generalist.jpg', count: '2,847' },
+    { name: 'Dentist', image: '/images/dentist.jpg', count: '1,234' },
+    { name: 'Cardiologist', image: '/images/Cardiologist.PNG', count: '567' },
+    { name: 'Dermatologist', image: '/images/dermatologue.PNG', count: '432' },
+    { name: 'Gynecologist', image: '/images/Gynecologist.png', count: '389' },
+    { name: 'Ophthalmologist', image: '/images/ophtalmologue.PNG', count: '298' }
   ];
 
   const stats = [
@@ -37,7 +47,7 @@ export default function HealthHomepage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <div className="flex-shrink-0 flex items-center">
+              <div className="flex-shrink-0 flex items-center cursor-pointer" onClick={() => window.location.href = '/'}>
                 <Activity className="h-8 w-8 text-[#4d89b1]" />
                 <span className="ml-2 text-2xl font-bold text-gray-900">Health</span>
               </div>
@@ -49,11 +59,16 @@ export default function HealthHomepage() {
               <a href="#" className="text-gray-700 hover:text-[#4d89b1] px-3 py-2 text-sm font-medium transition">About Us</a>
             </nav>
             <div className="hidden md:flex items-center space-x-4">
-              <button></button>
-              <button className="text-gray-700 hover:text-[#4d89b1] px-4 py-2 text-sm font-medium transition">Log In</button>
+              <button 
+                className="text-gray-700 hover:text-[#4d89b1] px-4 py-2 text-sm font-medium transition" 
+                onClick={handleLoginClick}
+              >
+                Log In
+              </button>
               <button
                 style={{ backgroundColor: '#4d89b1' }}
                 className="text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-[#3d6c91] transition"
+                onClick={handleSignUpClick}
               >
                 Sign Up
               </button>
@@ -76,10 +91,16 @@ export default function HealthHomepage() {
                 <a href="#" className="block px-3 py-2 text-gray-700 hover:text-[#4d89b1]">For Doctors</a>
                 <a href="#" className="block px-3 py-2 text-gray-700 hover:text-[#4d89b1]">About Us</a>
                 <div className="pt-4 pb-2 border-t border-gray-100">
-                  <button className="block w-full text-left px-3 py-2 text-gray-700 hover:text-[#4d89b1]">Log In</button>
+                  <button 
+                    className="block w-full text-left px-3 py-2 text-gray-700 hover:text-[#4d89b1]"
+                    onClick={handleLoginClick}
+                  >
+                    Log In
+                  </button>
                   <button
                     style={{ backgroundColor: '#4d89b1' }}
                     className="block w-full text-left px-3 py-2 text-white font-medium mt-2 rounded"
+                    onClick={handleSignUpClick}
                   >
                     Sign Up
                   </button>
@@ -94,7 +115,7 @@ export default function HealthHomepage() {
       <section
         className="py-20 relative"
         style={{
-          backgroundImage: "url('/public/images/health_bg.PNG')",
+          backgroundImage: "url('/images/health_bg.PNG')",
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat',
@@ -177,6 +198,9 @@ export default function HealthHomepage() {
                     src={specialty.image}
                     alt={specialty.name}
                     className="h-16 w-16 mx-auto rounded-full object-cover border-2 border-gray-100 shadow-sm"
+                    onError={(e) => {
+                      e.target.src = 'https://via.placeholder.com/64x64/4d89b1/ffffff?text=' + specialty.name.charAt(0);
+                    }}
                   />
                 </div>
                 <h3 className="font-semibold text-gray-900 mb-2 group-hover:text-[#4d89b1] transition">
@@ -276,18 +300,19 @@ export default function HealthHomepage() {
       <section className="py-20" style={{ background: 'linear-gradient(to r, #4d89b1, #3d6c91)' }}>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-4xl font-bold text-white mb-6">Ready to Get Started?</h2>
-          <p className="text-xl mb-8" style={{ color: '#1f3a4b' }}>Join thousands of users who trust Health for their healthcare needs</p>
+          <p className="text-xl mb-8" style={{ color: '#c7d8ef' }}>Join thousands of users who trust Health for their healthcare needs</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button
               style={{ backgroundColor: 'white', color: '#4d89b1' }}
               className="px-8 py-4 rounded-xl text-lg font-semibold hover:bg-gray-50 transition-all duration-200 transform hover:scale-105"
+              onClick={handleLoginClick}
             >
               I'm a Patient
             </button>
             <button
               style={{ backgroundColor: '#3d6c91', color: 'white' }}
               className="px-8 py-4 rounded-xl text-lg font-semibold hover:bg-[#2d5471] transition-all duration-200 transform hover:scale-105"
-              // onClick={() => navigate('/auth/doctor-login')}
+              onClick={() => window.location.href = '/auth/Login'}
             >
               I'm a Doctor
             </button>
