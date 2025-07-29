@@ -15,7 +15,7 @@ export default function HealthHomepage() {
 
   // Fonction pour gérer la navigation vers la page d'inscription
   const handleSignUpClick = () => {
-    window.location.href = '/auth/Login';
+    window.location.href = '/auth/Register';
   };
 
   const specialties = [
@@ -100,7 +100,7 @@ export default function HealthHomepage() {
                   <button
                     style={{ backgroundColor: '#4d89b1' }}
                     className="block w-full text-left px-3 py-2 text-white font-medium mt-2 rounded"
-                    onClick={handleSignUpClick}
+                    onClick={() => (window.location.href = '/auth/Register')}
                   >
                     Sign Up
                   </button>

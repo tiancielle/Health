@@ -79,26 +79,26 @@ export default function LoginPage() {
           </div>
 
           {/* Logo et titre */}
-          <div className="text-center mb-8">
-            <div
-              className="inline-flex items-center justify-center w-14 h-14 rounded-full mb-4"
-              style={{ backgroundColor: '#4d89b1' }}
-            >
-              <span
-                className="text-2xl font-bold text-white"
-                style={{ fontFamily: 'Poppins, sans-serif' }}
-              >
-                H
-              </span>
+            <div className="text-center mb-8">
+            <div className="flex justify-center mb-4">
+                <img
+                src="/images/Health.PNG" 
+                alt="Health Logo"
+                className="h-14 w-14 object-contain"
+                style={{
+                    boxShadow: '0 4px 12px rgba(77, 137, 177, 0.2)',
+                    borderRadius: '1rem',
+                }}
+                />
             </div>
             <h2
-              className="text-3xl font-bold text-gray-900"
-              style={{ color: '#1f3a4b' }}
+                className="text-3xl font-bold text-gray-900"
+                style={{ color: '#1f3a4b' }}
             >
-              Log In
+                Create Your Account
             </h2>
-            <p className="text-gray-600 mt-2">Sign in to your account</p>
-          </div>
+            <p className="text-gray-600 mt-2">Sign up to book appointments</p>
+            </div>
 
           {/* Formulaire */}
           <form onSubmit={handleSubmit} className="space-y-6">
