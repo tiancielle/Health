@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Header from '../../components/layout/Header';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -30,6 +31,7 @@ export default function LoginPage() {
   };
 
   return (
+    
     <div
       className="flex min-h-screen bg-gray-50"
       style={{ fontFamily: 'Inter, sans-serif' }}
