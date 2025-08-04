@@ -1,61 +1,85 @@
+// src/pages/auth/RegisterPage.jsx
 import React, { useState } from 'react';
+import api from '../../services/api';
 
 export default function RegisterPage() {
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState('');
-  const [birthDate, setBirthDate] = useState('');
-  const [gender, setGender] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    dateOfBirth: '',
+    gender: '',
+    password: '',
+    confirmPassword: '',
+  });
 
-  const handleSubmit = (e) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value,
+    });
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    setSuccess(false);
 
-    if (password !== confirmPassword) {
-      alert("Les mots de passe ne correspondent pas !");
+    // Validation frontend
+    if (formData.password !== formData.confirmPassword) {
+      setError("Les mots de passe ne correspondent pas.");
       return;
     }
 
-    console.log('Inscription avec :', { firstName, lastName, email, birthDate, gender, password });
-    // Ici, tu feras l'appel API pour enregistrer l'utilisateur
+    if (formData.password.length < 8) {
+      setError("Le mot de passe doit contenir au moins 8 caractères.");
+      return;
+    }
 
-    // Simulation de succès
-    alert('Inscription réussie ! (simulation)');
-    window.location.href = '/login'; // Redirection vers login après inscription
-  };
+    setLoading(true);
 
-  const handleBackToHome = () => {
-    window.location.href = '/';
+    try {
+      const response = await api.post('/auth/register', {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        dateOfBirth: formData.dateOfBirth,
+        gender: formData.gender.toLowerCase(),
+        password: formData.password,
+        role: 'patient',
+      });
+
+      setSuccess(true);
+
+      // Redirection après 1.5s
+      setTimeout(() => {
+        window.location.href = '/auth/Login';
+      }, 1500);
+
+    } catch (err) {
+      const message = err.response?.data?.message || 'Erreur réseau ou serveur.';
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div
-      className="flex min-h-screen bg-gray-50"
-      style={{ fontFamily: 'Inter, sans-serif' }}
-    >
-      {/* Partie gauche : Formulaire d'inscription */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center px-8 py-12">
+    <div className="flex min-h-screen bg-gray-50" style={{ fontFamily: 'Inter, sans-serif' }}>
+      {/* === Formulaire d'inscription (gauche) === */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center px-8 py-24">
         <div
           className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 border border-gray-100"
           style={{
             boxShadow: '0 20px 40px rgba(77, 137, 177, 0.1)',
           }}
         >
-          {/* Bouton retour */}
-          <div className="mb-4">
-            <button
-              onClick={handleBackToHome}
-              className="flex items-center text-gray-600 hover:text-[#4d89b1] transition-colors"
-            >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              Back to Home
-            </button>
-          </div>
-
-          {/* Logo et titre */}
+          {/* Logo centré */}
           <div className="text-center mb-8">
             <div className="flex justify-center mb-4">
               <img
@@ -77,9 +101,21 @@ export default function RegisterPage() {
             <p className="text-gray-600 mt-2">Sign up to book appointments</p>
           </div>
 
-          {/* Formulaire d'inscription */}
+          {/* Messages d'erreur/succès */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm text-center">
+              {error}
+            </div>
+          )}
+
+          {success && (
+            <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-lg text-sm text-center">
+              ✅ Inscription réussie ! Redirection vers la connexion...
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Nom et Prénom en ligne */}
+            {/* Nom et Prénom */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
@@ -88,9 +124,10 @@ export default function RegisterPage() {
                 <input
                   id="lastName"
                   type="text"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  placeholder="Doe"
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={handleChange}
+                  placeholder="Last name"
                   required
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base transition"
                   style={{ borderColor: '#e0e0e0' }}
@@ -103,9 +140,10 @@ export default function RegisterPage() {
                 <input
                   id="firstName"
                   type="text"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  placeholder="John"
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  placeholder="first name"
                   required
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base transition"
                   style={{ borderColor: '#e0e0e0' }}
@@ -121,9 +159,10 @@ export default function RegisterPage() {
               <input
                 id="email"
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="john.doe@example.com"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="your-email@example.com"
                 required
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base transition"
                 style={{ borderColor: '#e0e0e0' }}
@@ -132,14 +171,15 @@ export default function RegisterPage() {
 
             {/* Date de naissance */}
             <div>
-              <label htmlFor="birthDate" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="dateOfBirth" className="block text-sm font-medium text-gray-700 mb-2">
                 Date of Birth
               </label>
               <input
-                id="birthDate"
+                id="dateOfBirth"
                 type="date"
-                value={birthDate}
-                onChange={(e) => setBirthDate(e.target.value)}
+                name="dateOfBirth"
+                value={formData.dateOfBirth}
+                onChange={handleChange}
                 required
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base transition"
                 style={{ borderColor: '#e0e0e0' }}
@@ -153,18 +193,16 @@ export default function RegisterPage() {
               </label>
               <select
                 id="gender"
-                value={gender}
-                onChange={(e) => setGender(e.target.value)}
+                name="gender"
+                value={formData.gender}
+                onChange={handleChange}
                 required
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
                 style={{ borderColor: '#e0e0e0', color: '#1f3a4b' }}
               >
-                <option value="" disabled>
-                  Select your gender
-                </option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Other">Other</option>
+                <option value="" disabled>Select your gender</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
               </select>
             </div>
 
@@ -176,8 +214,9 @@ export default function RegisterPage() {
               <input
                 id="password"
                 type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
                 placeholder="••••••••"
                 required
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base transition"
@@ -193,8 +232,9 @@ export default function RegisterPage() {
               <input
                 id="confirmPassword"
                 type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
                 placeholder="••••••••"
                 required
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base transition"
@@ -205,13 +245,14 @@ export default function RegisterPage() {
             {/* Bouton d'inscription */}
             <button
               type="submit"
+              disabled={loading}
               className="w-full py-3 px-6 rounded-xl font-semibold text-white transition-all duration-200 transform hover:scale-[1.02] hover:shadow-lg"
               style={{
-                backgroundColor: '#4d89b1',
+                backgroundColor: loading ? '#88a9c3' : '#4d89b1',
                 boxShadow: '0 4px 15px rgba(77, 137, 177, 0.3)',
               }}
             >
-              Sign Up
+              {loading ? 'Creating Account...' : 'Sign Up'}
             </button>
           </form>
 
@@ -219,11 +260,7 @@ export default function RegisterPage() {
           <div className="mt-8 text-center">
             <p className="text-sm text-gray-600">
               Already have an account?{' '}
-              <a
-                href="/login"
-                className="font-medium hover:underline"
-                style={{ color: '#4d89b1' }}
-              >
+              <a href="/auth/Login" className="font-medium hover:underline" style={{ color: '#4d89b1' }}>
                 Log in
               </a>
             </p>
@@ -231,7 +268,7 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      {/* Partie droite : Image de fond (patient_bg.png) */}
+      {/* === Image de fond (droite) === */}
       <div
         className="hidden lg:flex lg:w-1/2 bg-cover bg-center relative"
         style={{
@@ -241,7 +278,7 @@ export default function RegisterPage() {
         <div
           className="absolute inset-0"
           style={{
-            backgroundColor: 'rgba(31, 58, 75, 0.6)', // Overlay bleu foncé
+            backgroundColor: 'rgba(31, 58, 75, 0.6)',
           }}
         ></div>
         <div className="relative z-10 flex items-center justify-center w-full p-12 text-white text-center">
