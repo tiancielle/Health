@@ -8,13 +8,14 @@ const {
   validate, 
   validateForgotPassword,
   validateResetPassword,
-  validateToken 
+  validateToken,
+  validateChangePassword  
 } = require('../middleware/validation');
 
 router.post('/register', validateRegister, validate, authController.register);
 router.post('/login', validateLogin, validate, authController.login);
 router.post('/forgot-password', validateForgotPassword, validate, authController.forgotPassword);
 router.post('/reset-password/:token', validateToken, validateResetPassword, validate, authController.resetPassword);
-router.post('/change-password', /* auth middleware */ , validateChangePassword, validate, authController.changePassword);
+router.post('/change-password', /* auth middleware */ validateChangePassword, validate, authController.changePassword);
 
 module.exports = router;

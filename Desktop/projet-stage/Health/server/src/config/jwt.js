@@ -22,13 +22,13 @@ class JWTConfig {
         this.privateKey = fs.readFileSync(privateKeyPath, 'utf8');
         this.publicKey = fs.readFileSync(publicKeyPath, 'utf8');
         this.useRSA = true;
-        console.log('✅ Clés RSA chargées avec succès');
+        console.log(' Clés RSA chargées avec succès');
       } else {
         this.useRSA = false;
-        console.log('ℹ️ Clés RSA non trouvées, utilisation du secret partagé');
+        console.log(' Clés RSA non trouvées, utilisation du secret partagé');
       }
     } catch (error) {
-      console.error('❌ Erreur lors du chargement des clés RSA:', error.message);
+      console.error(' Erreur lors du chargement des clés RSA:', error.message);
       this.useRSA = false;
     }
   }

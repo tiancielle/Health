@@ -9,9 +9,9 @@ const prisma = new PrismaClient();
 const connectPostgreSQL = async () => {
   try {
     await prisma.$connect();
-    console.log('✅ PostgreSQL connectée avec succès via Prisma');
+    console.log(' PostgreSQL connectée avec succès via Prisma');
   } catch (error) {
-    console.error('❌ Échec de la connexion à PostgreSQL :', error.message);
+    console.error(' Échec de la connexion à PostgreSQL :', error.message);
     process.exit(1);
   }
 };
@@ -24,9 +24,9 @@ const connectMongoDB = async () => {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    console.log('✅ MongoDB connectée avec succès');
+    console.log(' MongoDB connectée avec succès');
   } catch (error) {
-    console.error('❌ Erreur de connexion MongoDB :', error.message);
+    console.error(' Erreur de connexion MongoDB :', error.message);
     process.exit(1);
   }
 };
@@ -34,9 +34,9 @@ const connectMongoDB = async () => {
 // Synchronisation des modèles (inutile avec Prisma, mais on garde un placeholder)
 const syncPostgreSQL = async (force = false) => {
   if (force) {
-    console.warn('⚠️ Prisma ne supporte pas le "force sync" comme Sequelize. Utilise `prisma migrate` ou `prisma db push`.');
+    console.warn('Prisma ne supporte pas le "force sync" comme Sequelize. Utilise `prisma migrate` ou `prisma db push`.');
   }
-  console.log('ℹ️ Modèles PostgreSQL gérés via Prisma Migrate / db push (pas de sync ici)');
+  console.log(' Modèles PostgreSQL gérés via Prisma Migrate / db push (pas de sync ici)');
 };
 
 // Fermeture des connexions
@@ -46,7 +46,7 @@ const closeConnections = async () => {
     await require('mongoose').disconnect();
     console.log('🔌 Connexions fermées proprement');
   } catch (error) {
-    console.error('❌ Erreur lors de la fermeture des connexions :', error.message);
+    console.error(' Erreur lors de la fermeture des connexions :', error.message);
   }
 };
 
@@ -66,9 +66,9 @@ const initializeDatabases = async () => {
       await syncPostgreSQL();
     }
 
-    console.log('🎉 Bases de données initialisées avec succès');
+    console.log(' Bases de données initialisées avec succès');
   } catch (error) {
-    console.error('❌ Échec de l\'initialisation des bases de données :', error.message);
+    console.error(' Échec de l\'initialisation des bases de données :', error.message);
     process.exit(1);
   }
 };
@@ -76,7 +76,7 @@ const initializeDatabases = async () => {
 // Gestion des événements MongoDB
 const mongoose = require('mongoose');
 mongoose.connection.on('error', (error) => {
-  console.error('❌ Erreur MongoDB :', error.message);
+  console.error(' Erreur MongoDB :', error.message);
 });
 
 mongoose.connection.on('disconnected', () => {
@@ -85,13 +85,13 @@ mongoose.connection.on('disconnected', () => {
 
 // Gestion de la fermeture gracieuse
 process.on('SIGINT', async () => {
-  console.log('\n🛑 Arrêt du serveur... (SIGINT)');
+  console.log('\n Arrêt du serveur... (SIGINT)');
   await closeConnections();
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
-  console.log('\n🛑 Arrêt du serveur... (SIGTERM)');
+  console.log('\n Arrêt du serveur... (SIGTERM)');
   await closeConnections();
   process.exit(0);
 });

@@ -1,5 +1,7 @@
+// src/services/authService.js
 const crypto = require('crypto');
-const { User } = require('../models/postgresql');
+const bcrypt = require('bcryptjs');
+const { prisma } = require('../config/database');
 const jwtConfig = require('../config/jwt');
 const emailService = require('./emailService');
 const config = require('../config/environment');
@@ -11,7 +13,10 @@ class AuthService {
       const { email, password, role, firstName, lastName, phone, dateOfBirth, gender } = userData;
       
       // Vérifier si l'utilisateur existe déjà
-      const existingUser = await User.findByEmail(email);
+      const existingUser = await prisma.user.findUnique({
+        where: { email: email.toLowerCase() }
+      });
+      
       if (existingUser) {
         throw new Error('Un utilisateur avec cet email existe déjà');
       }
@@ -20,19 +25,47 @@ class AuthService {
       const emailVerificationToken = crypto.randomBytes(32).toString('hex');
       const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 heures
       
-      // Créer l'utilisateur
-      const user = await User.create({
-        email: email.toLowerCase(),
-        password,
-        role: role || 'patient',
-        firstName,
-        lastName,
-        phone,
-        dateOfBirth,
-        gender,
-        emailVerificationToken,
-        emailVerificationExpires,
+      // Hasher le mot de passe
+      const hashedPassword = await bcrypt.hash(password, config.security.bcryptRounds);
+      
+      // Créer l'utilisateur avec Prisma
+      const user = await prisma.user.create({
+        data: {
+          email: email.toLowerCase(),
+          password: hashedPassword,
+          role: role?.toUpperCase() || 'PATIENT',
+          firstName,
+          lastName,
+          phone,
+          dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+          gender: gender?.toUpperCase(),
+          emailVerificationToken,
+          emailVerificationExpires,
+        },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          isEmailVerified: true,
+          createdAt: true
+        }
       });
+      
+      // Créer le profil patient ou docteur selon le rôle
+      if (user.role === 'PATIENT') {
+        await prisma.patient.create({
+          data: {
+            userId: user.id,
+            allergies: [],
+            chronicDiseases: []
+          }
+        });
+      } else if (user.role === 'DOCTOR') {
+        // Pour les docteurs, on créera le profil après vérification admin
+        console.log('Profil docteur à créer après validation admin');
+      }
       
       // Envoyer l'email de vérification
       await emailService.sendVerificationEmail(user.email, emailVerificationToken);
@@ -49,14 +82,25 @@ class AuthService {
   // Connexion d'un utilisateur
   async login(email, password) {
     try {
-      // Rechercher l'utilisateur
-      const user = await User.findByEmail(email);
+      // Rechercher l'utilisateur avec ses relations
+      const user = await prisma.user.findUnique({
+        where: { email: email.toLowerCase() },
+        include: {
+          patient: true,
+          doctor: {
+            include: {
+              specialty: true
+            }
+          }
+        }
+      });
+      
       if (!user) {
         throw new Error('Email ou mot de passe incorrect');
       }
       
       // Vérifier si le compte est verrouillé
-      if (user.isLocked()) {
+      if (user.lockUntil && user.lockUntil > new Date()) {
         throw new Error('Compte temporairement verrouillé. Réessayez plus tard.');
       }
       
@@ -66,15 +110,16 @@ class AuthService {
       }
       
       // Vérifier le mot de passe
-      const isPasswordValid = await user.comparePassword(password);
+      const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
-        await user.incrementLoginAttempts();
+        // Incrémenter les tentatives de connexion
+        await this.incrementLoginAttempts(user.id, user.loginAttempts);
         throw new Error('Email ou mot de passe incorrect');
       }
       
       // Réinitialiser les tentatives de connexion
       if (user.loginAttempts > 0) {
-        await user.resetLoginAttempts();
+        await this.resetLoginAttempts(user.id);
       }
       
       // Générer les tokens
@@ -88,14 +133,20 @@ class AuthService {
       
       // Sauvegarder le refresh token
       const refreshTokenExpires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 jours
-      await user.update({
-        refreshToken: tokens.refreshToken,
-        refreshTokenExpires,
-        lastLoginAt: new Date()
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          refreshToken: tokens.refreshToken,
+          refreshTokenExpires,
+          lastLoginAt: new Date()
+        }
       });
       
+      // Exclure les données sensibles
+      const { password: _, refreshToken: __, ...userWithoutSensitiveData } = user;
+      
       return {
-        user,
+        user: userWithoutSensitiveData,
         tokens,
         message: 'Connexion réussie'
       };
@@ -114,9 +165,24 @@ class AuthService {
       }
       
       // Rechercher l'utilisateur
-      const user = await User.findByPk(decoded.userId);
+      const user = await prisma.user.findUnique({
+        where: { id: decoded.userId },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          refreshToken: true,
+          refreshTokenExpires: true,
+          isActive: true
+        }
+      });
+      
       if (!user) {
         throw new Error('Utilisateur non trouvé');
+      }
+      
+      if (!user.isActive) {
+        throw new Error('Compte désactivé');
       }
       
       // Vérifier si le refresh token correspond
@@ -135,7 +201,11 @@ class AuthService {
       
       return {
         accessToken: newAccessToken,
-        user,
+        user: {
+          id: user.id,
+          email: user.email,
+          role: user.role
+        },
         message: 'Token renouvelé avec succès'
       };
     } catch (error) {
@@ -146,15 +216,12 @@ class AuthService {
   // Déconnexion
   async logout(userId) {
     try {
-      const user = await User.findByPk(userId);
-      if (!user) {
-        throw new Error('Utilisateur non trouvé');
-      }
-      
-      // Supprimer le refresh token
-      await user.update({
-        refreshToken: null,
-        refreshTokenExpires: null
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          refreshToken: null,
+          refreshTokenExpires: null
+        }
       });
       
       return { message: 'Déconnexion réussie' };
@@ -166,19 +233,37 @@ class AuthService {
   // Vérification d'email
   async verifyEmail(token) {
     try {
-      const user = await User.findByVerificationToken(token);
+      const user = await prisma.user.findFirst({
+        where: {
+          emailVerificationToken: token,
+          emailVerificationExpires: {
+            gt: new Date()
+          }
+        }
+      });
+      
       if (!user) {
         throw new Error('Token de vérification invalide ou expiré');
       }
       
-      await user.update({
-        isEmailVerified: true,
-        emailVerificationToken: null,
-        emailVerificationExpires: null
+      const updatedUser = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          isEmailVerified: true,
+          emailVerificationToken: null,
+          emailVerificationExpires: null
+        },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          isEmailVerified: true
+        }
       });
       
       return {
-        user,
+        user: updatedUser,
         message: 'Email vérifié avec succès'
       };
     } catch (error) {
@@ -189,7 +274,10 @@ class AuthService {
   // Demande de réinitialisation de mot de passe
   async forgotPassword(email) {
     try {
-      const user = await User.findByEmail(email);
+      const user = await prisma.user.findUnique({
+        where: { email: email.toLowerCase() }
+      });
+      
       if (!user) {
         // Pour des raisons de sécurité, on ne révèle pas si l'email existe
         return { message: 'Si l\'email existe, un lien de réinitialisation a été envoyé.' };
@@ -199,9 +287,12 @@ class AuthService {
       const resetToken = crypto.randomBytes(32).toString('hex');
       const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 heure
       
-      await user.update({
-        passwordResetToken: resetToken,
-        passwordResetExpires: resetExpires
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          passwordResetToken: resetToken,
+          passwordResetExpires: resetExpires
+        }
       });
       
       // Envoyer l'email de réinitialisation
@@ -216,23 +307,36 @@ class AuthService {
   // Réinitialisation du mot de passe
   async resetPassword(token, newPassword) {
     try {
-      const user = await User.findByResetToken(token);
+      const user = await prisma.user.findFirst({
+        where: {
+          passwordResetToken: token,
+          passwordResetExpires: {
+            gt: new Date()
+          }
+        }
+      });
+      
       if (!user) {
         throw new Error('Token de réinitialisation invalide ou expiré');
       }
       
+      // Hasher le nouveau mot de passe
+      const hashedPassword = await bcrypt.hash(newPassword, config.security.bcryptRounds);
+      
       // Mettre à jour le mot de passe
-      await user.update({
-        password: newPassword,
-        passwordResetToken: null,
-        passwordResetExpires: null,
-        // Invalider tous les refresh tokens existants
-        refreshToken: null,
-        refreshTokenExpires: null
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          password: hashedPassword,
+          passwordResetToken: null,
+          passwordResetExpires: null,
+          // Invalider tous les refresh tokens existants
+          refreshToken: null,
+          refreshTokenExpires: null
+        }
       });
       
       return {
-        user,
         message: 'Mot de passe réinitialisé avec succès'
       };
     } catch (error) {
@@ -243,27 +347,35 @@ class AuthService {
   // Changement de mot de passe (utilisateur authentifié)
   async changePassword(userId, currentPassword, newPassword) {
     try {
-      const user = await User.findByPk(userId);
+      const user = await prisma.user.findUnique({
+        where: { id: userId }
+      });
+      
       if (!user) {
         throw new Error('Utilisateur non trouvé');
       }
       
       // Vérifier le mot de passe actuel
-      const isCurrentPasswordValid = await user.comparePassword(currentPassword);
+      const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
       if (!isCurrentPasswordValid) {
         throw new Error('Mot de passe actuel incorrect');
       }
       
+      // Hasher le nouveau mot de passe
+      const hashedPassword = await bcrypt.hash(newPassword, config.security.bcryptRounds);
+      
       // Mettre à jour le mot de passe
-      await user.update({
-        password: newPassword,
-        // Invalider tous les refresh tokens existants pour forcer une nouvelle connexion
-        refreshToken: null,
-        refreshTokenExpires: null
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          password: hashedPassword,
+          // Invalider tous les refresh tokens existants pour forcer une nouvelle connexion
+          refreshToken: null,
+          refreshTokenExpires: null
+        }
       });
       
       return {
-        user,
         message: 'Mot de passe modifié avec succès'
       };
     } catch (error) {
@@ -274,7 +386,24 @@ class AuthService {
   // Obtenir le profil utilisateur
   async getProfile(userId) {
     try {
-      const user = await User.findByPk(userId);
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          firstName: true,
+          lastName: true,
+          phone: true,
+          dateOfBirth: true,
+          gender: true,
+          profilePicture: true,
+          isEmailVerified: true,
+          lastLoginAt: true,
+          createdAt: true,
+        }
+      });
+      
       if (!user) {
         throw new Error('Utilisateur non trouvé');
       }
@@ -285,141 +414,52 @@ class AuthService {
     }
   }
   
-  // Mise à jour du profil
-  async updateProfile(userId, updateData) {
-    try {
-      const user = await User.findByPk(userId);
-      if (!user) {
-        throw new Error('Utilisateur non trouvé');
-      }
-      
-      // Champs autorisés pour la mise à jour
-      const allowedFields = ['firstName', 'lastName', 'phone', 'dateOfBirth', 'gender', 'profilePicture'];
-      const filteredData = {};
-      
-      Object.keys(updateData).forEach(key => {
-        if (allowedFields.includes(key)) {
-          filteredData[key] = updateData[key];
-        }
-      });
-      
-      await user.update(filteredData);
-      
-      return {
-        user,
-        message: 'Profil mis à jour avec succès'
-      };
-    } catch (error) {
-      throw new Error(`Erreur lors de la mise à jour du profil: ${error.message}`);
+  // Méthodes utilitaires
+  async incrementLoginAttempts(userId, currentAttempts) {
+    const updates = { loginAttempts: currentAttempts + 1 };
+    
+    // Si on atteint le maximum de tentatives, on verrouille le compte
+    if (currentAttempts + 1 >= 5) {
+      updates.lockUntil = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 heures
     }
+    
+    await prisma.user.update({
+      where: { id: userId },
+      data: updates
+    });
   }
   
-  // Renvoyer l'email de vérification
-  async resendVerificationEmail(email) {
-    try {
-      const user = await User.findByEmail(email);
-      if (!user) {
-        return { message: 'Si l\'email existe, un nouveau lien de vérification a été envoyé.' };
-      }
-      
-      if (user.isEmailVerified) {
-        throw new Error('Email déjà vérifié');
-      }
-      
-      // Générer un nouveau token
-      const emailVerificationToken = crypto.randomBytes(32).toString('hex');
-      const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 heures
-      
-      await user.update({
-        emailVerificationToken,
-        emailVerificationExpires
-      });
-      
-      // Envoyer l'email
-      await emailService.sendVerificationEmail(user.email, emailVerificationToken);
-      
-      return { message: 'Si l\'email existe, un nouveau lien de vérification a été envoyé.' };
-    } catch (error) {
-      throw new Error(`Erreur lors du renvoi de l'email: ${error.message}`);
-    }
-  }
-  
-  // Désactiver un compte
-  async deactivateAccount(userId) {
-    try {
-      const user = await User.findByPk(userId);
-      if (!user) {
-        throw new Error('Utilisateur non trouvé');
-      }
-      
-      await user.update({
-        isActive: false,
-        refreshToken: null,
-        refreshTokenExpires: null
-      });
-      
-      return {
-        user,
-        message: 'Compte désactivé avec succès'
-      };
-    } catch (error) {
-      throw new Error(`Erreur lors de la désactivation: ${error.message}`);
-    }
-  }
-  
-  // Réactiver un compte
-  async reactivateAccount(userId) {
-    try {
-      const user = await User.findByPk(userId);
-      if (!user) {
-        throw new Error('Utilisateur non trouvé');
-      }
-      
-      await user.update({
-        isActive: true,
+  async resetLoginAttempts(userId) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
         loginAttempts: 0,
         lockUntil: null
-      });
-      
-      return {
-        user,
-        message: 'Compte réactivé avec succès'
-      };
-    } catch (error) {
-      throw new Error(`Erreur lors de la réactivation: ${error.message}`);
-    }
-  }
-  
-  // Vérifier si un email est disponible
-  async checkEmailAvailability(email) {
-    try {
-      const user = await User.findByEmail(email);
-      return {
-        available: !user,
-        message: user ? 'Email déjà utilisé' : 'Email disponible'
-      };
-    } catch (error) {
-      throw new Error(`Erreur lors de la vérification: ${error.message}`);
-    }
+      }
+    });
   }
   
   // Obtenir les statistiques d'authentification
   async getAuthStats() {
     try {
-      const totalUsers = await User.count();
-      const activeUsers = await User.count({ where: { isActive: true } });
-      const verifiedUsers = await User.count({ where: { isEmailVerified: true } });
-      const lockedUsers = await User.count({
+      const [totalUsers, activeUsers, verifiedUsers, usersByRole] = await Promise.all([
+        prisma.user.count(),
+        prisma.user.count({ where: { isActive: true } }),
+        prisma.user.count({ where: { isEmailVerified: true } }),
+        prisma.user.groupBy({
+          by: ['role'],
+          _count: {
+            role: true
+          }
+        })
+      ]);
+      
+      const lockedUsers = await prisma.user.count({
         where: {
           lockUntil: {
-            [User.sequelize.Sequelize.Op.gt]: new Date()
+            gt: new Date()
           }
         }
-      });
-      
-      const usersByRole = await User.findAll({
-        attributes: ['role', [User.sequelize.fn('COUNT', User.sequelize.col('role')), 'count']],
-        group: ['role']
       });
       
       return {
@@ -429,7 +469,7 @@ class AuthService {
         lockedUsers,
         usersByRole: usersByRole.map(item => ({
           role: item.role,
-          count: parseInt(item.dataValues.count)
+          count: item._count.role
         }))
       };
     } catch (error) {
