@@ -49,7 +49,7 @@ app.use('/api/auth', authRoutes);
 
 // === Routes protégées ===
 app.use('/api/patients', authenticateToken, patientRoutes);
-app.use('/api/doctors', authenticateToken, doctorRoutes);
+app.use('/api/doctors', doctorRoutes);
 app.use('/api/appointments', authenticateToken, appointmentRoutes);
 app.use('/api/medical-records', authenticateToken, medicalRecordsRoutes);
 app.use('/api/admin', authenticateToken, require('./middleware/roleCheck')('admin'), adminRoutes);

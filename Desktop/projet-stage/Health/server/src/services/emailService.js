@@ -10,7 +10,7 @@ class EmailService {
 
   async initializeTransporter() {
     try {
-      this.transporter = nodemailer.createTransporter({
+      this.transporter = nodemailer.createTransport({
         service: config.email.service,
         host: config.email.host,
         port: config.email.port,
