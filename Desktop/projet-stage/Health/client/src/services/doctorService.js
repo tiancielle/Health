@@ -1,237 +1,187 @@
-// import api from './api';
+// client/src/services/doctorService.js
+import api from './api';
 
-// export const doctorService = {
-//   // Authentification docteur
-//   login: async (credentials) => {
-//     try {
-//       const response = await api.post('/auth/doctor/login', credentials);
-      
-//       // Stocker le token si rememberMe est activé
-//       if (credentials.rememberMe && response.data.token) {
-//         localStorage.setItem('doctorToken', response.data.token);
-//         localStorage.setItem('doctorRefreshToken', response.data.refreshToken);
-//       } else {
-//         sessionStorage.setItem('doctorToken', response.data.token);
-//       }
-      
-//       return response;
-//     } catch (error) {
-//       console.error('Doctor login error:', error);
-//       throw error;
-//     }
-//   },
+const doctorService = {
+  // Obtenir tous les médecins avec pagination et filtres
+  getAllDoctors: async (params = {}) => {
+    try {
+      const response = await api.get('/doctors', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Erreur lors de la récupération des médecins:', error);
+      throw error;
+    }
+  },
 
-//   // Déconnexion docteur
-//   logout: async () => {
-//     try {
-//       await api.post('/auth/doctor/logout');
-      
-//       // Nettoyer les tokens
-//       localStorage.removeItem('doctorToken');
-//       localStorage.removeItem('doctorRefreshToken');
-//       sessionStorage.removeItem('doctorToken');
-      
-//     } catch (error) {
-//       console.error('Doctor logout error:', error);
-//       // Nettoyer les tokens même en cas d'erreur
-//       localStorage.removeItem('doctorToken');
-//       localStorage.removeItem('doctorRefreshToken');
-//       sessionStorage.removeItem('doctorToken');
-//     }
-//   },
+  // Obtenir un médecin par ID
+  getDoctorById: async (doctorId) => {
+    try {
+      const response = await api.get(`/doctors/${doctorId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Erreur lors de la récupération du médecin:', error);
+      throw error;
+    }
+  },
 
-//   // Vérifier le token
-//   verifyToken: async (token) => {
-//     try {
-//       const response = await api.get('/auth/doctor/verify', {
-//         headers: { Authorization: `Bearer ${token}` }
-//       });
-//       return response.data;
-//     } catch (error) {
-//       throw error;
-//     }
-//   },
+  // Obtenir le profil public d'un médecin
+  getDoctorPublicProfile: async (doctorId) => {
+    try {
+      const response = await api.get(`/doctors/${doctorId}/public`);
+      return response.data;
+    } catch (error) {
+      console.error('Erreur lors de la récupération du profil public:', error);
+      throw error;
+    }
+  },
 
-//   // Récupérer le profil du docteur
-//   getProfile: async () => {
-//     try {
-//       const response = await api.get('/doctor/profile');
-//       return response.data;
-//     } catch (error) {
-//       console.error('Get doctor profile error:', error);
-//       throw error;
-//     }
-//   },
+  // Obtenir les créneaux disponibles d'un médecin
+  getDoctorAvailability: async (doctorId, date = null) => {
+    try {
+      const params = date ? { date } : {};
+      const response = await api.get(`/doctors/${doctorId}/availability`, { params });
+      return response.data;
+    } catch (error) {
+      console.error('Erreur lors de la récupération des disponibilités:', error);
+      throw error;
+    }
+  },
 
-//   // Mettre à jour le profil
-//   updateProfile: async (profileData) => {
-//     try {
-//       const response = await api.put('/doctor/profile', profileData);
-//       return response.data;
-//     } catch (error) {
-//       console.error('Update doctor profile error:', error);
-//       throw error;
-//     }
-//   },
+  // Obtenir les avis d'un médecin
+  getDoctorReviews: async (doctorId, params = {}) => {
+    try {
+      const response = await api.get(`/doctors/${doctorId}/reviews`, { params });
+      return response.data;
+    } catch (error) {
+      console.error('Erreur lors de la récupération des avis:', error);
+      throw error;
+    }
+  },
 
-//   // Récupérer le planning
-//   getSchedule: async (dateRange) => {
-//     try {
-//       const response = await api.get('/doctor/schedule', {
-//         params: dateRange
-//       });
-//       return response.data;
-//     } catch (error) {
-//       console.error('Get doctor schedule error:', error);
-//       throw error;
-//     }
-//   },
+  // Rechercher des médecins par spécialité
+  getDoctorsBySpecialty: async (specialty, params = {}) => {
+    try {
+      const response = await api.get(`/doctors/specialty/${specialty}`, { params });
+      return response.data;
+    } catch (error) {
+      console.error('Erreur lors de la recherche par spécialité:', error);
+      throw error;
+    }
+  },
 
-//   // Mettre à jour le planning
-//   updateSchedule: async (scheduleData) => {
-//     try {
-//       const response = await api.put('/doctor/schedule', scheduleData);
-//       return response.data;
-//     } catch (error) {
-//       console.error('Update doctor schedule error:', error);
-//       throw error;
-//     }
-//   },
+  // Obtenir les médecins favoris d'un patient
+  getFavoriteDoctors: async () => {
+    try {
+      const response = await api.get('/patient/favorites');
+      return response.data;
+    } catch (error) {
+      console.error('Erreur lors de la récupération des favoris:', error);
+      throw error;
+    }
+  },
 
-//   // Récupérer les rendez-vous
-//   getAppointments: async (filters) => {
-//     try {
-//       const response = await api.get('/doctor/appointments', {
-//         params: filters
-//       });
-//       return response.data;
-//     } catch (error) {
-//       console.error('Get doctor appointments error:', error);
-//       throw error;
-//     }
-//   },
+  // Ajouter un médecin aux favoris
+  addToFavorites: async (doctorId) => {
+    try {
+      const response = await api.post(`/patient/favorites/${doctorId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Erreur lors de l\'ajout aux favoris:', error);
+      throw error;
+    }
+  },
 
-//   // Confirmer un rendez-vous
-//   confirmAppointment: async (appointmentId) => {
-//     try {
-//       const response = await api.patch(`/doctor/appointments/${appointmentId}/confirm`);
-//       return response.data;
-//     } catch (error) {
-//       console.error('Confirm appointment error:', error);
-//       throw error;
-//     }
-//   },
+  // Retirer un médecin des favoris
+  removeFromFavorites: async (doctorId) => {
+    try {
+      const response = await api.delete(`/patient/favorites/${doctorId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Erreur lors de la suppression des favoris:', error);
+      throw error;
+    }
+  },
 
-//   // Annuler un rendez-vous
-//   cancelAppointment: async (appointmentId, reason) => {
-//     try {
-//       const response = await api.patch(`/doctor/appointments/${appointmentId}/cancel`, {
-//         reason
-//       });
-//       return response.data;
-//     } catch (error) {
-//       console.error('Cancel appointment error:', error);
-//       throw error;
-//     }
-//   },
+  // Laisser un avis sur un médecin
+  addReview: async (doctorId, reviewData) => {
+    try {
+      const response = await api.post(`/doctors/${doctorId}/reviews`, reviewData);
+      return response.data;
+    } catch (error) {
+      console.error('Erreur lors de l\'ajout de l\'avis:', error);
+      throw error;
+    }
+  },
 
-//   // Récupérer les patients
-//   getPatients: async (filters) => {
-//     try {
-//       const response = await api.get('/doctor/patients', {
-//         params: filters
-//       });
-//       return response.data;
-//     } catch (error) {
-//       console.error('Get doctor patients error:', error);
-//       throw error;
-//     }
-//   },
+  // Obtenir les statistiques d'un médecin
+  getDoctorStats: async (doctorId) => {
+    try {
+      const response = await api.get(`/doctors/${doctorId}/stats`);
+      return response.data;
+    } catch (error) {
+      console.error('Erreur lors de la récupération des statistiques:', error);
+      throw error;
+    }
+  },
 
-//   // Récupérer les dossiers médicaux d'un patient
-//   getPatientRecords: async (patientId) => {
-//     try {
-//       const response = await api.get(`/doctor/patients/${patientId}/records`);
-//       return response.data;
-//     } catch (error) {
-//       console.error('Get patient records error:', error);
-//       throw error;
-//     }
-//   },
+  // Vérifier si un médecin est disponible
+  checkDoctorAvailability: async (doctorId, date, time) => {
+    try {
+      const response = await api.get(`/doctors/${doctorId}/check-availability`, {
+        params: { date, time }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Erreur lors de la vérification de disponibilité:', error);
+      throw error;
+    }
+  },
 
-//   // Ajouter une note médicale
-//   addMedicalNote: async (patientId, noteData) => {
-//     try {
-//       const response = await api.post(`/doctor/patients/${patientId}/notes`, noteData);
-//       return response.data;
-//     } catch (error) {
-//       console.error('Add medical note error:', error);
-//       throw error;
-//     }
-//   },
+  // Obtenir les médecins recommandés
+  getRecommendedDoctors: async (patientId = null) => {
+    try {
+      const params = patientId ? { patientId } : {};
+      const response = await api.get('/doctors/recommended', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Erreur lors de la récupération des recommandations:', error);
+      throw error;
+    }
+  },
 
-//   // Prescrire un médicament
-//   prescribeMedication: async (patientId, prescriptionData) => {
-//     try {
-//       const response = await api.post(`/doctor/patients/${patientId}/prescriptions`, prescriptionData);
-//       return response.data;
-//     } catch (error) {
-//       console.error('Prescribe medication error:', error);
-//       throw error;
-//     }
-//   },
+  // Obtenir les médecins populaires
+  getPopularDoctors: async (limit = 10) => {
+    try {
+      const response = await api.get('/doctors/popular', { params: { limit } });
+      return response.data;
+    } catch (error) {
+      console.error('Erreur lors de la récupération des médecins populaires:', error);
+      throw error;
+    }
+  },
 
-//   // Récupérer les statistiques du docteur
-//   getStats: async (period) => {
-//     try {
-//       const response = await api.get('/doctor/stats', {
-//         params: { period }
-//       });
-//       return response.data;
-//     } catch (error) {
-//       console.error('Get doctor stats error:', error);
-//       throw error;
-//     }
-//   },
+  // Obtenir les médecins récemment consultés
+  getRecentlyViewedDoctors: async () => {
+    try {
+      const response = await api.get('/patient/recently-viewed');
+      return response.data;
+    } catch (error) {
+      console.error('Erreur lors de la récupération de l\'historique:', error);
+      throw error;
+    }
+  },
 
-//   // Demander la réinitialisation du mot de passe
-//   requestPasswordReset: async (email) => {
-//     try {
-//       const response = await api.post('/auth/doctor/forgot-password', { email });
-//       return response.data;
-//     } catch (error) {
-//       console.error('Request password reset error:', error);
-//       throw error;
-//     }
-//   },
+  // Enregistrer une vue de profil médecin
+  recordDoctorView: async (doctorId) => {
+    try {
+      const response = await api.post(`/doctors/${doctorId}/view`);
+      return response.data;
+    } catch (error) {
+      console.error('Erreur lors de l\'enregistrement de la vue:', error);
+      // Ne pas faire échouer silencieusement
+      return null;
+    }
+  }
+};
 
-//   // Réinitialiser le mot de passe
-//   resetPassword: async (token, newPassword) => {
-//     try {
-//       const response = await api.post('/auth/doctor/reset-password', {
-//         token,
-//         password: newPassword
-//       });
-//       return response.data;
-//     } catch (error) {
-//       console.error('Reset password error:', error);
-//       throw error;
-//     }
-//   },
-
-//   // Changer le mot de passe
-//   changePassword: async (currentPassword, newPassword) => {
-//     try {
-//       const response = await api.put('/doctor/change-password', {
-//         currentPassword,
-//         newPassword
-//       });
-//       return response.data;
-//     } catch (error) {
-//       console.error('Change password error:', error);
-//       throw error;
-//     }
-//   }
-// };
-
-// export default doctorService;
+export default doctorService;
