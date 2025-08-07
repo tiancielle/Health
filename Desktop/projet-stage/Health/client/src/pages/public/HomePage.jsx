@@ -1,18 +1,85 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, MapPin, Calendar, Clock, Star, Shield, Users, Activity, ChevronRight, Menu, X, Filter, Grid, List } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { searchDoctors, getSuggestions, getLocationSuggestions, getSpecialties } from '../../services/searchService';
 
-// Import des composants (simulés ici pour la démo)
+// Enhanced SearchForm Component
 const SearchForm = ({ onSearch, className = '' }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [location, setLocation] = useState('');
   const [suggestions, setSuggestions] = useState([]);
+  const [locationSuggestions, setLocationSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSearch = (query = searchQuery, loc = location) => {
+  // Fetch search suggestions (doctors, specialties, disorders)
+  useEffect(() => {
+    const fetchSuggestions = async () => {
+      if (searchQuery.length >= 2) {
+        try {
+          const results = await getSuggestions(searchQuery, 'all');
+          setSuggestions(results);
+        } catch (error) {
+          console.error('Error fetching suggestions:', error);
+          setSuggestions([]);
+        }
+      } else {
+        setSuggestions([]);
+      }
+    };
+
+    const timeoutId = setTimeout(fetchSuggestions, 300);
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
+
+  // Fetch location suggestions
+  useEffect(() => {
+    const fetchLocationSuggestions = async () => {
+      if (location.length >= 2) {
+        try {
+          const results = await getLocationSuggestions(location);
+          setLocationSuggestions(results);
+        } catch (error) {
+          console.error('Error fetching location suggestions:', error);
+          setLocationSuggestions([]);
+        }
+      } else {
+        setLocationSuggestions([]);
+      }
+    };
+
+    const timeoutId = setTimeout(fetchLocationSuggestions, 300);
+    return () => clearTimeout(timeoutId);
+  }, [location]);
+
+  const handleSearch = async (query = searchQuery, loc = location) => {
     if (!query.trim()) return;
-    onSearch(query.trim(), loc.trim());
+    
+    setIsLoading(true);
     setShowSuggestions(false);
+    setShowLocationSuggestions(false);
+    
+    try {
+      await onSearch(query.trim(), loc.trim());
+    } catch (error) {
+      console.error('Search error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSuggestionClick = (suggestion) => {
+    setSearchQuery(suggestion.text);
+    setShowSuggestions(false);
+    handleSearch(suggestion.text, location);
+  };
+
+  const handleLocationSuggestionClick = (locationSuggestion) => {
+    const locationText = `${locationSuggestion.name}, ${locationSuggestion.postal_code}`;
+    setLocation(locationText);
+    setShowLocationSuggestions(false);
+    handleSearch(searchQuery, locationText);
   };
 
   const handleKeyDown = (e) => {
@@ -22,10 +89,20 @@ const SearchForm = ({ onSearch, className = '' }) => {
     }
   };
 
+  const getSuggestionIcon = (type) => {
+    switch (type) {
+      case 'doctor': return '👨‍⚕️';
+      case 'specialty': return '🏥';
+      case 'disorder': return '🩺';
+      default: return '🔍';
+    }
+  };
+
   return (
     <div className={`relative ${className}`}>
       <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
         <div className="grid md:grid-cols-3 gap-4">
+          {/* Main Search Field */}
           <div className="md:col-span-2 relative">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               What are you looking for?
@@ -38,46 +115,120 @@ const SearchForm = ({ onSearch, className = '' }) => {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setShowSuggestions(true)}
                 onKeyDown={handleKeyDown}
-                placeholder="Doctor, specialty, disorder..."
+                placeholder="Doctor name, specialty, or medical condition..."
                 className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#4d89b1] focus:border-transparent text-base transition"
               />
             </div>
+
+            {/* Search Suggestions Dropdown */}
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg mt-1 z-50 max-h-80 overflow-y-auto">
+                <div className="p-2">
+                  <div className="text-xs font-medium text-gray-500 px-3 py-2">Suggestions</div>
+                  {suggestions.map((suggestion, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleSuggestionClick(suggestion)}
+                      className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-lg flex items-center space-x-3"
+                    >
+                      <span className="text-lg">{getSuggestionIcon(suggestion.type)}</span>
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900">{suggestion.text}</div>
+                        <div className="text-xs text-gray-500 capitalize">{suggestion.type}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Where?
-            </label>
+          {/* Location Field */}
+          <div className="relative">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Where?</label>
             <div className="relative">
               <MapPin className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
               <input
                 type="text"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
+                onFocus={() => setShowLocationSuggestions(true)}
                 onKeyDown={handleKeyDown}
-                placeholder="City, ZIP code"
+                placeholder="City or postal code"
                 className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#4d89b1] focus:border-transparent text-base transition"
               />
             </div>
+
+            {/* Location Suggestions Dropdown */}
+            {showLocationSuggestions && locationSuggestions.length > 0 && (
+              <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg mt-1 z-50 max-h-60 overflow-y-auto">
+                <div className="p-2">
+                  <div className="text-xs font-medium text-gray-500 px-3 py-2">Cities</div>
+                  {locationSuggestions.map((city, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleLocationSuggestionClick(city)}
+                      className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-lg flex items-center space-x-3"
+                    >
+                      <MapPin className="h-4 w-4 text-gray-400" />
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900">{city.name}</div>
+                        <div className="text-xs text-gray-500">{city.postal_code} • {city.region}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
         <button
           onClick={() => handleSearch()}
-          disabled={!searchQuery.trim()}
+          disabled={isLoading || !searchQuery.trim()}
           className="w-full mt-6 bg-[#4d89b1] text-white py-3 px-8 rounded-xl text-base font-semibold hover:bg-[#3d6c91] disabled:bg-gray-300 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-[1.02] flex items-center justify-center space-x-2"
         >
-          <Search className="h-4 w-4" />
-          <span>Search</span>
+          {isLoading ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              <span>Searching...</span>
+            </>
+          ) : (
+            <>
+              <Search className="h-4 w-4" />
+              <span>Search</span>
+            </>
+          )}
         </button>
       </div>
     </div>
   );
 };
 
+// Enhanced DoctorCard Component
 const DoctorCard = ({ doctor, onBookAppointment }) => {
-  const { firstName, lastName, specialty, rating, reviewCount, profileImage, location, nextAvailableSlot, consultationFee, verified, availableToday } = doctor;
-  const fullName = `Dr. ${firstName} ${lastName}`;
+  const {
+    id,
+    first_name,
+    last_name,
+    specialties,
+    avg_rating,
+    review_count,
+    profile_image,
+    city,
+    postal_code,
+    next_available_slot,
+    consultation_fee,
+    is_verified,
+    is_available_today,
+    clinic_name,
+    years_of_experience
+  } = doctor;
+
+  const fullName = `Dr. ${first_name} ${last_name}`;
+  const location = `${city}${postal_code ? `, ${postal_code}` : ''}`;
+  const rating = parseFloat(avg_rating || 0).toFixed(1);
+  const reviewCount = parseInt(review_count || 0);
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-lg hover:border-[#a0c3e0] transition-all duration-200 cursor-pointer overflow-hidden group">
@@ -85,18 +236,20 @@ const DoctorCard = ({ doctor, onBookAppointment }) => {
         <div className="flex items-start space-x-4">
           <div className="relative">
             <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center">
-              {profileImage ? (
-                <img src={profileImage} alt={fullName} className="w-16 h-16 rounded-full object-cover" />
+              {profile_image ? (
+                <img src={profile_image} alt={fullName} className="w-16 h-16 rounded-full object-cover" />
               ) : (
-                <span className="text-xl font-bold text-gray-600">{firstName[0]}{lastName[0]}</span>
+                <span className="text-xl font-bold text-gray-600">
+                  {first_name?.[0]}{last_name?.[0]}
+                </span>
               )}
             </div>
-            {verified && (
+            {is_verified && (
               <div className="absolute -top-1 -right-1 bg-blue-500 rounded-full p-1">
                 <Shield className="h-3 w-3 text-white" />
               </div>
             )}
-            {availableToday && (
+            {is_available_today && (
               <div className="absolute -bottom-1 -right-1 bg-green-500 rounded-full w-3 h-3 border-2 border-white"></div>
             )}
           </div>
@@ -105,7 +258,13 @@ const DoctorCard = ({ doctor, onBookAppointment }) => {
             <h3 className="text-lg font-semibold text-gray-900 mb-1 group-hover:text-[#4d89b1] transition-colors">
               {fullName}
             </h3>
-            <p className="text-[#4d89b1] font-medium text-sm capitalize">{specialty}</p>
+            <p className="text-[#4d89b1] font-medium text-sm">{specialties}</p>
+            {clinic_name && (
+              <p className="text-gray-500 text-xs mt-1">{clinic_name}</p>
+            )}
+            {years_of_experience && (
+              <p className="text-gray-500 text-xs">{years_of_experience} years experience</p>
+            )}
           </div>
         </div>
 
@@ -114,7 +273,7 @@ const DoctorCard = ({ doctor, onBookAppointment }) => {
             <Star className="h-4 w-4 text-yellow-400 fill-current" />
             <span className="font-medium text-gray-900 text-sm">{rating}</span>
           </div>
-          <span className="text-gray-500 text-sm">({reviewCount})</span>
+          <span className="text-gray-500 text-sm">({reviewCount} reviews)</span>
         </div>
       </div>
 
@@ -124,29 +283,29 @@ const DoctorCard = ({ doctor, onBookAppointment }) => {
           <span className="text-sm truncate">{location}</span>
         </div>
 
-        <div className="flex items-center space-x-2 text-gray-600 mb-4">
-          <Clock className="h-4 w-4 flex-shrink-0" />
-          <span className="text-sm">{nextAvailableSlot || 'Available soon'}</span>
-        </div>
+        {next_available_slot && (
+          <div className="flex items-center space-x-2 text-gray-600 mb-4">
+            <Clock className="h-4 w-4 flex-shrink-0" />
+            <span className="text-sm">{next_available_slot}</span>
+          </div>
+        )}
 
-        {consultationFee && (
+        {consultation_fee && (
           <div className="text-center mb-4">
-            <span className="text-lg font-semibold text-gray-900">${consultationFee}</span>
+            <span className="text-lg font-semibold text-gray-900">{consultation_fee} MAD</span>
             <span className="text-gray-500 text-sm ml-1">consultation</span>
           </div>
         )}
       </div>
 
       <div className="px-6 pb-6">
-        <div className="flex space-x-2">
-          <button
-            onClick={() => onBookAppointment(doctor)}
-            className="flex-1 bg-[#4d89b1] text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-[#3d6c91] transition-colors duration-200 flex items-center justify-center space-x-2"
-          >
-            <Calendar className="h-4 w-4" />
-            <span>Book Now</span>
-          </button>
-        </div>
+        <button
+          onClick={() => onBookAppointment(doctor)}
+          className="w-full bg-[#4d89b1] text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-[#3d6c91] transition-colors duration-200 flex items-center justify-center space-x-2"
+        >
+          <Calendar className="h-4 w-4" />
+          <span>Book Appointment</span>
+        </button>
       </div>
     </div>
   );
@@ -164,53 +323,22 @@ export default function HealthHomepage() {
   const [isSearching, setIsSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchLocation, setSearchLocation] = useState('');
+  const [specialties, setSpecialties] = useState([]);
   const navigate = useNavigate();
 
-  // Données fictives pour la démonstration
-  const mockDoctors = [
-    {
-      id: 1,
-      firstName: 'John',
-      lastName: 'Smith',
-      specialty: 'cardiologist',
-      rating: 4.8,
-      reviewCount: 127,
-      profileImage: null,
-      location: 'New York, NY',
-      nextAvailableSlot: 'Today at 2:00 PM',
-      consultationFee: 150,
-      verified: true,
-      availableToday: true
-    },
-    {
-      id: 2,
-      firstName: 'Sarah',
-      lastName: 'Johnson',
-      specialty: 'dermatologist',
-      rating: 4.9,
-      reviewCount: 89,
-      profileImage: null,
-      location: 'Los Angeles, CA',
-      nextAvailableSlot: 'Tomorrow at 10:00 AM',
-      consultationFee: 120,
-      verified: true,
-      availableToday: false
-    },
-    {
-      id: 3,
-      firstName: 'Michael',
-      lastName: 'Brown',
-      specialty: 'general-practitioner',
-      rating: 4.7,
-      reviewCount: 203,
-      profileImage: null,
-      location: 'Chicago, IL',
-      nextAvailableSlot: 'Today at 4:30 PM',
-      consultationFee: 100,
-      verified: true,
-      availableToday: true
-    }
-  ];
+  // Load specialties on component mount
+  useEffect(() => {
+    const loadSpecialties = async () => {
+      try {
+        const data = await getSpecialties();
+        setSpecialties(data.slice(0, 6)); // Show only first 6 specialties
+      } catch (error) {
+        console.error('Error loading specialties:', error);
+      }
+    };
+
+    loadSpecialties();
+  }, []);
 
   const handleLoginClick = () => {
     navigate('/auth/Login');
@@ -226,26 +354,24 @@ export default function HealthHomepage() {
     setIsSearching(true);
     setSearchQuery(query);
     setSearchLocation(location);
-    
-    // Simulation d'une recherche API
+
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Filtrer les résultats fictifs basés sur la recherche
-      const filteredResults = mockDoctors.filter(doctor => 
-        doctor.specialty.toLowerCase().includes(query.toLowerCase()) ||
-        doctor.firstName.toLowerCase().includes(query.toLowerCase()) ||
-        doctor.lastName.toLowerCase().includes(query.toLowerCase())
-      );
-      
+      const data = await searchDoctors(query, location);
       setSearchResults({
-        doctors: filteredResults,
-        total: filteredResults.length,
+        doctors: data.doctors || [],
+        total: data.total || 0,
         query,
         location
       });
     } catch (error) {
-      console.error('Erreur de recherche:', error);
+      console.error('Search error:', error);
+      setSearchResults({
+        doctors: [],
+        total: 0,
+        query,
+        location,
+        error: error.message
+      });
     } finally {
       setIsSearching(false);
     }
@@ -258,17 +384,15 @@ export default function HealthHomepage() {
   };
 
   const handleBookAppointment = (doctor) => {
-    alert(`Booking appointment with ${doctor.firstName} ${doctor.lastName}`);
+    // Navigate to appointment booking page or show booking modal
+    console.log('Booking appointment with:', doctor);
+    // For now, just show an alert
+    alert(`Booking appointment with Dr. ${doctor.first_name} ${doctor.last_name}`);
   };
 
-  const specialties = [
-    { name: 'General Practitioner', image: '/images/generalist.jpg', count: '2,847' },
-    { name: 'Dentist', image: '/images/dentist.jpg', count: '1,234' },
-    { name: 'Cardiologist', image: '/images/Cardiologist.PNG', count: '567' },
-    { name: 'Dermatologist', image: '/images/dermatologue.PNG', count: '432' },
-    { name: 'Gynecologist', image: '/images/Gynecologist.png', count: '389' },
-    { name: 'Ophthalmologist', image: '/images/ophtalmologue.PNG', count: '298' }
-  ];
+  const handleSpecialtyClick = (specialtyName) => {
+    handleSearch(specialtyName, '');
+  };
 
   const stats = [
     { label: 'Active Patients', value: '50,000+', icon: Users },
@@ -278,9 +402,9 @@ export default function HealthHomepage() {
   ];
 
   const testimonials = [
-    { name: 'Marie Dubois', rating: 5, text: 'Very intuitive interface, I booked an appointment in just a few clicks!', specialty: 'Patient' },
-    { name: 'Dr. Jean Martin', rating: 5, text: 'Excellent platform for managing my consultations and patients.', specialty: 'Cardiologist' },
-    { name: 'Sophie Laurent', rating: 5, text: 'My medical records are finally centralized and secure.', specialty: 'Patient' }
+    { name: 'Amina Benali', rating: 5, text: 'Very intuitive interface, I booked an appointment in just a few clicks!', specialty: 'Patient' },
+    { name: 'Dr. Ahmed Tazi', rating: 5, text: 'Excellent platform for managing my consultations and patients.', specialty: 'Cardiologist' },
+    { name: 'Fatima Alaoui', rating: 5, text: 'My medical records are finally centralized and secure.', specialty: 'Patient' }
   ];
 
   return (
@@ -371,11 +495,11 @@ export default function HealthHomepage() {
         </div>
       </header>
 
-      {/* Affichage conditionnel : Résultats de recherche ou Page d'accueil */}
+      {/* Conditional Display: Search Results or Homepage */}
       {searchResults ? (
-        /* Section Résultats de Recherche */
+        /* Search Results Section */
         <div className="min-h-screen bg-gray-50">
-          {/* Barre de recherche en haut */}
+          {/* Search bar at top */}
           <div className="bg-white border-b border-gray-200">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
               <SearchForm onSearch={handleSearch} />
@@ -383,14 +507,16 @@ export default function HealthHomepage() {
           </div>
 
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            {/* En-tête des résultats */}
+            {/* Results header */}
             <div className="flex justify-between items-center mb-8">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900 mb-2">
                   Search Results
                 </h1>
                 <p className="text-gray-600">
-                  {searchResults.total > 0 ? (
+                  {searchResults.error ? (
+                    <span className="text-red-600">Error: {searchResults.error}</span>
+                  ) : searchResults.total > 0 ? (
                     <>
                       <span className="font-medium">{searchResults.total}</span> doctors found
                       {searchQuery && <> for "<span className="font-medium">{searchQuery}</span>"</>}
@@ -410,15 +536,28 @@ export default function HealthHomepage() {
               </button>
             </div>
 
-            {/* Résultats */}
+            {/* Results */}
             {isSearching ? (
               <Loading />
+            ) : searchResults.error ? (
+              <div className="text-center py-16">
+                <div className="text-red-500 text-xl mb-4">⚠️ Search Error</div>
+                <p className="text-gray-600 mb-8">
+                  There was an error with your search. Please try again.
+                </p>
+                <button
+                  onClick={clearSearch}
+                  className="bg-[#4d89b1] text-white px-6 py-3 rounded-lg hover:bg-[#3d6c91] transition"
+                >
+                  Back to Home
+                </button>
+              </div>
             ) : searchResults.doctors.length === 0 ? (
               <div className="text-center py-16">
                 <Search className="h-16 w-16 text-gray-300 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">No doctors found</h3>
                 <p className="text-gray-600 mb-8">
-                  Try adjusting your search criteria
+                  Try adjusting your search criteria or search in a different city
                 </p>
                 <button
                   onClick={clearSearch}
@@ -441,9 +580,9 @@ export default function HealthHomepage() {
           </div>
         </div>
       ) : (
-        /* Page d'accueil normale */
+        /* Normal Homepage */
         <>
-          {/* Hero avec image de fond */}
+          {/* Hero with background image */}
           <section
             className="py-20 relative"
             style={{
@@ -460,6 +599,7 @@ export default function HealthHomepage() {
                   Your Health,
                   <span style={{ color: '#1f3a4b' }} className="block">Our Priority</span>
                 </h1>
+
                 <p className="text-xl max-w-3xl leading-relaxed">
                   Book online appointments with thousands of healthcare professionals. Securely manage your medical records.
                 </p>

@@ -7,7 +7,7 @@ import SearchForm from '../../components/forms/searchForm';
 import DoctorCard from '../../components/common/DoctorCard';
 import Loading from '../../components/ui/Loading';
 import Pagination from '../../components/ui/Pagination';
-import searchService from '../../services/searchService';
+import { searchDoctors } from '../../services/searchService';
 
 export default function SearchResults() {
   const [searchParams] = useSearchParams();

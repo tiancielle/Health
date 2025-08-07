@@ -1,7 +1,7 @@
 // client/src/components/forms/SearchForm.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, MapPin, X, Clock } from 'lucide-react';
-import { searchDoctors } from '../../services/searchService'; // ← Service API
+// import { searchDoctors } from '../../services/searchService'; // ← Service API
 
 export default function SearchForm({ onSearch, className = '' }) {
   const [searchQuery, setSearchQuery] = useState('');
