@@ -599,9 +599,8 @@ export default function HealthHomepage() {
                   Your Health,
                   <span style={{ color: '#1f3a4b' }} className="block">Our Priority</span>
                 </h1>
-
                 <p className="text-xl max-w-3xl leading-relaxed">
-                  Book online appointments with thousands of healthcare professionals. Securely manage your medical records.
+                  Book online appointments with thousands of healthcare professionals in Morocco. Securely manage your medical records.
                 </p>
               </div>
               
@@ -622,28 +621,49 @@ export default function HealthHomepage() {
                 <p className="text-xl text-gray-600">Instant access to healthcare professionals near you</p>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
-                {specialties.map((specialty, index) => (
+                {specialties.length > 0 ? specialties.map((specialty, index) => (
                   <div
-                    key={index}
+                    key={specialty.id}
                     className="bg-white border border-gray-200 rounded-2xl p-8 text-center hover:border-[#a0c3e0] hover:shadow-lg transition-all duration-200 cursor-pointer group"
-                    onClick={() => handleSearch(specialty.name, '')}
+                    onClick={() => handleSpecialtyClick(specialty.name)}
                   >
                     <div className="mb-4">
-                      <img
-                        src={specialty.image}
-                        alt={specialty.name}
-                        className="h-16 w-16 mx-auto rounded-full object-cover border-2 border-gray-100 shadow-sm"
-                        onError={(e) => {
-                          e.target.src = 'https://via.placeholder.com/64x64/4d89b1/ffffff?text=' + specialty.name.charAt(0);
-                        }}
-                      />
+                      <div className="h-16 w-16 mx-auto rounded-full bg-[#4d89b1] flex items-center justify-center text-white text-2xl font-bold">
+                        {specialty.name.charAt(0)}
+                      </div>
                     </div>
                     <h3 className="font-semibold text-gray-900 mb-2 group-hover:text-[#4d89b1] transition">
                       {specialty.name}
                     </h3>
-                    <p className="text-sm text-gray-500">{specialty.count} doctors</p>
+                    <p className="text-sm text-gray-500">{specialty.doctor_count || 0} doctors</p>
                   </div>
-                ))}
+                )) : (
+                  // Default specialties if API fails
+                  [
+                    { name: 'General Practice', count: '2,847' },
+                    { name: 'Dentistry', count: '1,234' },
+                    { name: 'Cardiology', count: '567' },
+                    { name: 'Dermatology', count: '432' },
+                    { name: 'Gynecology', count: '389' },
+                    { name: 'Pediatrics', count: '298' }
+                  ].map((specialty, index) => (
+                    <div
+                      key={index}
+                      className="bg-white border border-gray-200 rounded-2xl p-8 text-center hover:border-[#a0c3e0] hover:shadow-lg transition-all duration-200 cursor-pointer group"
+                      onClick={() => handleSpecialtyClick(specialty.name)}
+                    >
+                      <div className="mb-4">
+                        <div className="h-16 w-16 mx-auto rounded-full bg-[#4d89b1] flex items-center justify-center text-white text-2xl font-bold">
+                          {specialty.name.charAt(0)}
+                        </div>
+                      </div>
+                      <h3 className="font-semibold text-gray-900 mb-2 group-hover:text-[#4d89b1] transition">
+                        {specialty.name}
+                      </h3>
+                      <p className="text-sm text-gray-500">{specialty.count} doctors</p>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </section>
@@ -653,7 +673,7 @@ export default function HealthHomepage() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="text-center mb-16">
                 <h2 className="text-4xl font-bold text-gray-900 mb-4">Why Choose Health?</h2>
-                <p className="text-xl text-gray-600">A modern platform for optimal healthcare management</p>
+                <p className="text-xl text-gray-600">A modern platform for optimal healthcare management in Morocco</p>
               </div>
               <div className="grid md:grid-cols-3 gap-8">
                 <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100">
@@ -662,7 +682,7 @@ export default function HealthHomepage() {
                   </div>
                   <h3 className="text-2xl font-bold text-gray-900 mb-4">Instant Booking</h3>
                   <p className="text-gray-600 leading-relaxed">
-                    Book appointments 24/7 with your preferred healthcare providers. Instant confirmation and automatic reminders.
+                    Book appointments 24/7 with your preferred healthcare providers across Morocco. Instant confirmation and automatic reminders.
                   </p>
                 </div>
                 <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100">
@@ -671,7 +691,7 @@ export default function HealthHomepage() {
                   </div>
                   <h3 className="text-2xl font-bold text-gray-900 mb-4">Secure Data</h3>
                   <p className="text-gray-600 leading-relaxed">
-                    Your medical information is protected with bank-level encryption. GDPR compliance guaranteed.
+                    Your medical information is protected with bank-level encryption. Full compliance with Moroccan data protection laws.
                   </p>
                 </div>
                 <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100">
@@ -710,7 +730,7 @@ export default function HealthHomepage() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="text-center mb-16">
                 <h2 className="text-4xl font-bold text-gray-900 mb-4">What Our Users Say</h2>
-                <p className="text-xl text-gray-600">Over 50,000 patients and 5,000 doctors trust us</p>
+                <p className="text-xl text-gray-600">Over 50,000 patients and 5,000 doctors trust us across Morocco</p>
               </div>
               <div className="grid md:grid-cols-3 gap-8">
                 {testimonials.map((testimonial, index) => (
@@ -735,7 +755,7 @@ export default function HealthHomepage() {
           <section className="py-20" style={{ background: 'linear-gradient(to r, #4d89b1, #3d6c91)' }}>
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
               <h2 className="text-4xl font-bold text-white mb-6">Ready to Get Started?</h2>
-              <p className="text-xl mb-8" style={{ color: '#c7d8ef' }}>Join thousands of users who trust Health for their healthcare needs</p>
+              <p className="text-xl mb-8" style={{ color: '#c7d8ef' }}>Join thousands of users who trust Health for their healthcare needs in Morocco</p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <button
                   style={{ backgroundColor: 'white', color: '#4d89b1' }}
@@ -787,7 +807,7 @@ export default function HealthHomepage() {
                       <span className="ml-2 text-2xl font-bold text-gray-900">Health</span>
                     </div>
                     <p className="text-gray-600 leading-relaxed mb-6">
-                      The leading platform for your online medical appointments. Find and consult qualified healthcare professionals near you.
+                      The leading platform for your online medical appointments in Morocco. Find and consult qualified healthcare professionals near you.
                     </p>
                     <div className="flex space-x-4">
                       <div style={{ backgroundColor: '#4d89b1' }} className="text-white px-3 py-2 rounded-lg text-sm font-medium">
@@ -800,10 +820,10 @@ export default function HealthHomepage() {
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-4">Specialties</h3>
                     <ul className="space-y-3 text-sm">
-                      {['General Practitioner', 'Dentist', 'Cardiologist', 'Dermatologist', 'Gynecologist', 'All Specialties'].map((item, i) => (
+                      {['General Practice', 'Dentistry', 'Cardiology', 'Dermatology', 'Gynecology', 'All Specialties'].map((item, i) => (
                         <li key={i}>
                           <button 
-                            onClick={() => handleSearch(item, '')}
+                            onClick={() => handleSpecialtyClick(item)}
                             className="text-gray-600 hover:text-[#4d89b1] transition text-left"
                           >
                             {item}
@@ -877,16 +897,16 @@ export default function HealthHomepage() {
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex flex-col md:flex-row justify-between items-center text-sm text-gray-500">
                   <div className="flex flex-wrap items-center space-x-6 mb-4 md:mb-0">
-                    <span>© 2025 Health. All rights reserved.</span>
+                    <span>© 2025 Health Morocco. All rights reserved.</span>
                     <a href="#" className="hover:text-gray-700 transition">Legal Notice</a>
                     <a href="#" className="hover:text-gray-700 transition">Privacy Policy</a>
                     <a href="#" className="hover:text-gray-700 transition">Terms of Service</a>
                     <a href="#" className="hover:text-gray-700 transition">Cookies</a>
                   </div>
                   <div className="flex items-center space-x-4">
-                    <span>🇺🇸 United States</span>
+                    <span>🇲🇦 Morocco</span>
                     <span>•</span>
-                    <span>English</span>
+                    <span>English | العربية | Français</span>
                   </div>
                 </div>
               </div>
