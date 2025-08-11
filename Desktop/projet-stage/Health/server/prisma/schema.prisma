@@ -1,4 +1,3 @@
-// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,281 +7,173 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Modèle User principal
-model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  role      UserRole @default(PATIENT)
-  
-  // Informations personnelles
-  firstName String
-  lastName  String
-  phone     String?
-  dateOfBirth DateTime?
-  gender    Gender?
-  profilePicture String?
-  
-  // Status et vérifications
-  isEmailVerified Boolean @default(false)
-  isActive       Boolean @default(true)
-  lastLoginAt    DateTime?
-  
-  // Tokens de vérification
-  emailVerificationToken   String?
-  emailVerificationExpires DateTime?
-  passwordResetToken       String?
-  passwordResetExpires     DateTime?
-  refreshToken            String?
-  refreshTokenExpires     DateTime?
-  
-  // Sécurité
-  loginAttempts     Int       @default(0)
-  lockUntil        DateTime?
-  twoFactorSecret  String?
-  twoFactorEnabled Boolean   @default(false)
-  
-  // Relations
-  patient Patient?
-  doctor  Doctor?
-  
-  // Timestamps
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deletedAt DateTime?
-  
-  @@map("users")
-}
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model specialties {
+  id                 Int                  @id @default(autoincrement())
+  name               String               @unique @db.VarChar(100)
+  description        String?
+  created_at         DateTime?            @default(now()) @db.Timestamp(6)
+  updated_at         DateTime?            @default(now()) @db.Timestamp(6)
+  disorders          disorders[]
+  doctor_specialties doctor_specialties[]
 
-// Modèle Patient
-model Patient {
-  id     String @id @default(uuid())
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  // Informations médicales spécifiques
-  bloodType        String?
-  allergies        String[]
-  chronicDiseases  String[]
-  emergencyContact Json? // {name, phone, relation}
-  insuranceInfo    Json? // {provider, policyNumber, etc}
-  
-  // Relations
-  appointments     Appointment[]
-  medicalRecords   String[] // IDs des dossiers médicaux en MongoDB
-  
-  // Timestamps
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  @@map("patients")
-}
-
-// Modèle Doctor
-model Doctor {
-  id     String @id @default(uuid())
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  // Informations professionnelles
-  licenseNumber    String    @unique
-  specialtyId      String
-  specialty        Specialty @relation(fields: [specialtyId], references: [id])
-  yearsExperience  Int       @default(0)
-  education        String[]
-  certifications   String[]
-  languages        String[]
-  
-  // Informations pratique
-  consultationFee  Decimal?  @db.Decimal(10, 2)
-  biography        String?
-  officeAddress    Json?     // {street, city, postalCode, country}
-  
-  // Status
-  isVerified       Boolean   @default(false)
-  isAvailable      Boolean   @default(true)
-  
-  // Relations
-  appointments     Appointment[]
-  schedules        Schedule[]
-  reviews          Review[]
-  
-  // Timestamps
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  @@map("doctors")
-}
-
-// Modèle Specialty (spécialités médicales)
-model Specialty {
-  id          String @id @default(uuid())
-  name        String @unique
-  description String?
-  icon        String?
-  
-  // Relations
-  doctors Doctor[]
-  
-  // Timestamps
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
   @@map("specialties")
 }
 
-// Modèle Appointment
-model Appointment {
-  id        String @id @default(uuid())
-  
-  // Relations
-  patientId String
-  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  doctorId  String
-  doctor    Doctor  @relation(fields: [doctorId], references: [id], onDelete: Cascade)
-  
-  // Informations du rendez-vous
-  scheduledAt    DateTime
-  duration       Int            @default(30) // en minutes
-  status         AppointmentStatus @default(SCHEDULED)
-  type           AppointmentType   @default(CONSULTATION)
-  
-  // Détails
-  reason         String
-  notes          String?
-  symptoms       String[]
-  
-  // Suivi
-  reminderSent   Boolean @default(false)
-  cancelReason   String?
-  cancelledAt    DateTime?
-  cancelledBy    String? // patientId ou doctorId
-  
-  // Relations avec MongoDB
-  medicalRecordId String? // ID du dossier médical créé après consultation
-  
-  // Timestamps
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  @@map("appointments")
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model disorders {
+  id           Int          @id @default(autoincrement())
+  name         String       @db.VarChar(150)
+  description  String?
+  specialty_id Int?
+  keywords     String[]
+  created_at   DateTime?    @default(now()) @db.Timestamp(6)
+  updated_at   DateTime?    @default(now()) @db.Timestamp(6)
+  specialty    specialties? @relation(fields: [specialty_id], references: [id], onUpdate: NoAction)
+
+  @@index([keywords], map: "idx_disorders_keywords", type: Gin)
+  @@map("disorders")
 }
 
-// Modèle Schedule (horaires des médecins)
-model Schedule {
-  id       String @id @default(uuid())
-  doctorId String
-  doctor   Doctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
-  
-  // Horaires
-  dayOfWeek    Int      // 0 = Dimanche, 1 = Lundi, etc.
-  startTime    String   // Format "HH:MM"
-  endTime      String   // Format "HH:MM"
-  
-  // Configuration
-  slotDuration Int      @default(30) // en minutes
-  breakStart   String?  // Format "HH:MM"
-  breakEnd     String?  // Format "HH:MM"
-  
-  // Status
-  isActive     Boolean  @default(true)
-  
-  // Exceptions (jours fériés, congés)
-  exceptions   Json[]   // [{date: "YYYY-MM-DD", reason: "Holiday"}]
-  
-  // Timestamps
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  @@unique([doctorId, dayOfWeek])
-  @@map("schedules")
+model addresses {
+  id             Int       @id @default(autoincrement())
+  street_address String?   @db.VarChar(255)
+  city           String    @db.VarChar(100)
+  state          String?   @db.VarChar(100)
+  postal_code    String?   @db.VarChar(20)
+  country        String?   @default("Maroc") @db.VarChar(100)
+  latitude       Decimal?  @db.Decimal(10, 8)
+  longitude      Decimal?  @db.Decimal(11, 8)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  doctors        doctors[]
+
+  @@index([city], map: "idx_addresses_city")
+  @@map("addresses")
 }
 
-// Modèle Review (avis des patients)
-model Review {
-  id        String @id @default(uuid())
-  
-  // Relations
-  patientId String
-  doctorId  String
-  doctor    Doctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
-  
-  // Contenu de l'avis
-  rating    Int    @db.SmallInt // 1-5 étoiles
-  comment   String?
-  
-  // Critères spécifiques
-  punctuality     Int? @db.SmallInt // 1-5
-  communication   Int? @db.SmallInt // 1-5
-  professionalism Int? @db.SmallInt // 1-5
-  
-  // Status
-  isVerified Boolean @default(false)
-  isPublic   Boolean @default(true)
-  
-  // Timestamps
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  @@unique([patientId, doctorId]) // Un seul avis par patient/médecin
+model doctors {
+  id                 Int                  @id @default(autoincrement())
+  user_id            Int                  @unique
+  license_number     String               @unique @db.VarChar(100)
+  consultation_fee   Decimal?             @db.Decimal(10, 2)
+  bio                String?
+  experience_years   Int?                 @default(0)
+  education          String?
+  certifications     String[]
+  languages          String[]             @default(["arabe", "français"])
+  address_id         Int?
+  is_verified        Boolean?             @default(false)
+  is_available       Boolean?             @default(true)
+  created_at         DateTime?            @default(now()) @db.Timestamp(6)
+  updated_at         DateTime?            @default(now()) @db.Timestamp(6)
+  availability_slots availability_slots[]
+  doctor_specialties doctor_specialties[]
+  address            addresses?           @relation(fields: [address_id], references: [id], onUpdate: NoAction)
+  users              users                @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  reviews            reviews[]
+
+  @@map("doctors")
+}
+
+model doctor_specialties {
+  id            Int         @id @default(autoincrement())
+  doctor_id     Int
+  specialty_id  Int
+  is_primary    Boolean?    @default(false)
+  certification String?     @db.VarChar(255)
+  doctor        doctors     @relation(fields: [doctor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  specialty     specialties @relation(fields: [specialty_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([doctor_id, specialty_id])
+  @@map("doctor_specialties")
+}
+
+model availability_slots {
+  id          Int       @id @default(autoincrement())
+  doctor_id   Int
+  day_of_week Int
+  start_time  DateTime  @db.Time(6)
+  end_time    DateTime  @db.Time(6)
+  is_active   Boolean?  @default(true)
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
+  doctor      doctors   @relation(fields: [doctor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("availability_slots")
+}
+
+model reviews {
+  id         Int       @id @default(autoincrement())
+  doctor_id  Int
+  patient_id Int
+  rating     Int
+  comment    String?
+  verified   Boolean?  @default(false)
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  doctor     doctors   @relation(fields: [doctor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  patients   patients  @relation(fields: [patient_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
   @@map("reviews")
 }
 
-// Modèle Notification
-model Notification {
-  id       String @id @default(uuid())
-  
-  // Destinataire
-  userId   String
-  
-  // Contenu
-  title    String
-  message  String
-  type     NotificationType
-  
-  // Données additionnelles
-  data     Json?
-  
-  // Status
-  isRead   Boolean @default(false)
-  
-  // Timestamps
-  createdAt DateTime @default(now())
-  readAt    DateTime?
-  
-  @@map("notifications")
+model patients {
+  id                Int       @id @default(autoincrement())
+  user_id           Int       @unique
+  blood_type        String?   @db.VarChar(5)
+  allergies         String[]
+  chronic_diseases  String[]
+  emergency_contact Json?
+  insurance_info    Json?
+  created_at        DateTime? @default(now()) @db.Timestamp(6)
+  updated_at        DateTime? @default(now()) @db.Timestamp(6)
+  users             users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  reviews           reviews[]
 }
 
-// Enums
-enum UserRole {
-  PATIENT
-  DOCTOR
-  ADMIN
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model users {
+  id            Int       @id @default(autoincrement())
+  email         String    @unique @db.VarChar(255)
+  password      String    @db.VarChar(255)
+  role          String    @default("PATIENT") @db.VarChar(20)
+  is_verified   Boolean?  @default(false)
+  first_name    String    @db.VarChar(100)
+  last_name     String    @db.VarChar(100)
+  phone         String?   @db.VarChar(20)
+  date_of_birth DateTime? @db.Date
+  gender        String?   @db.VarChar(10)
+  profile_image String?   @db.VarChar(500)
+  is_doctor     Boolean?  @default(false)
+  created_at    DateTime? @default(now()) @db.Timestamp(6)
+  updated_at    DateTime? @default(now()) @db.Timestamp(6)
+  doctors       doctors?
+  patients      patients?
+
+  @@index([email], map: "idx_users_email")
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+  RESCHEDULED
+}
+
+enum AppointmentType {
+  CONSULTATION
+  FOLLOW_UP
+  EMERGENCY
+  CHECK_UP
+  VACCINATION
+  SURGERY
+  THERAPY
 }
 
 enum Gender {
   MALE
   FEMALE
-}
-
-enum AppointmentStatus {
-  SCHEDULED    // Planifié
-  CONFIRMED    // Confirmé
-  IN_PROGRESS  // En cours
-  COMPLETED    // Terminé
-  CANCELLED    // Annulé
-  NO_SHOW      // Patient absent
-  RESCHEDULED  // Reporté
-}
-
-enum AppointmentType {
-  CONSULTATION    // Consultation générale
-  FOLLOW_UP      // Suivi
-  EMERGENCY      // Urgence
-  CHECK_UP       // Bilan de santé
-  VACCINATION    // Vaccination
-  SURGERY        // Chirurgie
-  THERAPY        // Thérapie
 }
 
 enum NotificationType {
@@ -293,4 +184,10 @@ enum NotificationType {
   MEDICAL_RECORD_UPDATED
   SYSTEM_NOTIFICATION
   PAYMENT_REMINDER
+}
+
+enum UserRole {
+  PATIENT
+  DOCTOR
+  ADMIN
 }

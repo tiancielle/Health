@@ -1,0 +1,302 @@
+-- Database: Health_DataBase
+
+-- DROP DATABASE IF EXISTS "Health_DataBase";
+
+CREATE DATABASE "Health_DataBase"
+    WITH
+    OWNER = postgres
+    ENCODING = 'UTF8'
+    LC_COLLATE = 'French_France.1252'
+    LC_CTYPE = 'French_France.1252'
+    LOCALE_PROVIDER = 'libc'
+    TABLESPACE = pg_default
+    CONNECTION LIMIT = -1
+    IS_TEMPLATE = False;
+
+-- ================================
+-- CRÉATION DE LA BASE DE DONNÉES HEALTH (MAROC)
+-- ================================
+
+-- 1. Table des utilisateurs (admin, docteurs, patients)
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL, -- Hashé avec bcrypt
+    role VARCHAR(20) NOT NULL DEFAULT 'PATIENT', -- ADMIN, DOCTOR, PATIENT
+    is_verified BOOLEAN DEFAULT false,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    phone VARCHAR(20),
+    date_of_birth DATE,
+    gender VARCHAR(10),
+    profile_image VARCHAR(500),
+    is_doctor BOOLEAN DEFAULT false, -- Pour index filtré
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2. Table des spécialités médicales
+CREATE TABLE specialties (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 3. Table des troubles/maladies
+CREATE TABLE disorders (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(150) NOT NULL,
+    description TEXT,
+    specialty_id INTEGER REFERENCES specialties(id) ON DELETE SET NULL,
+    keywords TEXT[],
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 4. Table des adresses
+CREATE TABLE addresses (
+    id SERIAL PRIMARY KEY,
+    street_address VARCHAR(255),
+    city VARCHAR(100) NOT NULL,
+    state VARCHAR(100),
+    postal_code VARCHAR(20),
+    country VARCHAR(100) DEFAULT 'Maroc',
+    latitude DECIMAL(10, 8),
+    longitude DECIMAL(11, 8),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 5. Table des docteurs
+CREATE TABLE doctors (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    license_number VARCHAR(100) UNIQUE NOT NULL,
+    consultation_fee DECIMAL(10, 2),
+    bio TEXT,
+    experience_years INTEGER DEFAULT 0,
+    education TEXT,
+    certifications TEXT[],
+    languages TEXT[] DEFAULT ARRAY['arabe', 'français'],
+    address_id INTEGER REFERENCES addresses(id) ON DELETE SET NULL,
+    is_verified BOOLEAN DEFAULT false,
+    is_available BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 6. Table des patients
+CREATE TABLE patients (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    blood_type VARCHAR(5),
+    allergies TEXT[],
+    chronic_diseases TEXT[],
+    emergency_contact JSONB,
+    insurance_info JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 7. Liaison docteurs-spécialités (many-to-many)
+CREATE TABLE doctor_specialties (
+    id SERIAL PRIMARY KEY,
+    doctor_id INTEGER NOT NULL REFERENCES doctors(id) ON DELETE CASCADE,
+    specialty_id INTEGER NOT NULL REFERENCES specialties(id) ON DELETE CASCADE,
+    is_primary BOOLEAN DEFAULT false,
+    certification VARCHAR(255),
+    UNIQUE(doctor_id, specialty_id)
+);
+
+-- 8. Créneaux de disponibilité
+CREATE TABLE availability_slots (
+    id SERIAL PRIMARY KEY,
+    doctor_id INTEGER NOT NULL REFERENCES doctors(id) ON DELETE CASCADE,
+    day_of_week INTEGER NOT NULL CHECK (day_of_week >= 0 AND day_of_week <= 6),
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 9. Avis des patients
+CREATE TABLE reviews (
+    id SERIAL PRIMARY KEY,
+    doctor_id INTEGER NOT NULL REFERENCES doctors(id) ON DELETE CASCADE,
+    patient_id INTEGER NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+    rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    comment TEXT,
+    verified BOOLEAN DEFAULT false,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 10. Index optimisés (sans erreurs)
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_name ON users USING gin(to_tsvector('french', first_name || ' ' || last_name));
+CREATE INDEX idx_addresses_city ON addresses(city);
+CREATE INDEX idx_specialties_name ON specialties USING gin(to_tsvector('french', name));
+CREATE INDEX idx_disorders_name ON disorders USING gin(to_tsvector('french', name));
+CREATE INDEX idx_disorders_keywords ON disorders USING gin(keywords);
+
+-- Index ciblé sur les docteurs ( valide grâce à is_doctor)
+CREATE INDEX idx_users_doctors_name ON users USING gin(to_tsvector('french', first_name || ' ' || last_name))
+WHERE is_doctor = true;
+
+
+
+
+
+-- ADMIN PAR DÉFAUT (id=1, email unique)
+-- Mot de passe : "8888health" (hashé avec bcrypt)
+-- ================================
+INSERT INTO users (
+    id, email, password, role, first_name, last_name,
+    phone, is_verified, gender, is_doctor, created_at, updated_at
+) VALUES (
+    1,
+    'admin@healthsystem.com',
+    '$2b$10$zZp2e5u9qY6t7s8r7q6wOe5t4u3y2x1c0v9b8n7m6l5k4j3i2h1g0f', -- bcrypt.hash("8888health", 10)
+    'ADMIN',
+    'Admin',
+    'Système',
+    '0600000000',
+    true,
+    'OTHER',
+    false,
+    NOW(),
+    NOW()
+)
+ON CONFLICT (email) DO NOTHING;
+
+-- ================================
+--  SPÉCIALITÉS
+-- ================================
+INSERT INTO specialties (name, description) VALUES
+('Médecin Généraliste', 'Soins primaires'),
+('Cardiologue', 'Cœur et vaisseaux'),
+('Dermatologue', 'Peau et cheveux'),
+('Dentiste', 'Santé bucco-dentaire'),
+('Gynécologue', 'Santé féminine'),
+('Ophtalmologue', 'Vision'),
+('Pédiatre', 'Enfants'),
+('Neurologue', 'Système nerveux'),
+('Orthopédiste', 'Os et articulations'),
+('Psychiatre', 'Santé mentale')
+ON CONFLICT (name) DO NOTHING;
+
+-- ================================
+-- 🇲🇦 ADRESSES MAROCAINES
+-- ================================
+INSERT INTO addresses (street_address, city, postal_code, country) VALUES
+('Avenue Mohammed V', 'Rabat', '10000', 'Maroc'),
+('Boulevard Moulay Youssef', 'Casablanca', '20000', 'Maroc'),
+('Rue Ibn Sina', 'Marrakech', '40000', 'Maroc'),
+('Avenue Hassan II', 'Fès', '30000', 'Maroc'),
+('Avenue Al Qods', 'Tanger', '90000', 'Maroc'),
+('Avenue des FAR', 'Agadir', '80000', 'Maroc'),
+('Avenue Mohammed VI', 'Oujda', '60000', 'Maroc'),
+('Avenue Ibn Battouta', 'Tétouan', '93000', 'Maroc'),
+('Avenue Al Massira', 'Kénitra', '14000', 'Maroc'),
+('Avenue Al Amal', 'Meknès', '50000', 'Maroc')
+ON CONFLICT DO NOTHING;
+
+
+-- ================================
+--  DOCTEURS MAROCAINS
+-- ================================
+-- Insertion des utilisateurs docteurs
+INSERT INTO users (email, password, role, first_name, last_name, phone, gender, is_doctor, created_at, updated_at)
+VALUES
+('khalid.elmoussaoui@email.com', '$2b$10$hashed', 'DOCTOR', 'Khalid', 'Elmoussaoui', '0611111111', 'MALE', true, NOW(), NOW()),
+('souad.maalouf@email.com', '$2b$10$hashed', 'DOCTOR', 'Souad', 'Maalouf', '0622222222', 'FEMALE', true, NOW(), NOW()),
+('youssef.benali@email.com', '$2b$10$hashed', 'DOCTOR', 'Youssef', 'Benali', '0633333333', 'MALE', true, NOW(), NOW())
+ON CONFLICT (email) DO NOTHING;
+
+-- Insertion dans doctors (seulement si user_id existe)
+INSERT INTO doctors (user_id, license_number, consultation_fee, bio, experience_years, address_id)
+SELECT u.id, 'LIC-MA-2025-' || u.id, 400.00 + (u.id * 25), 'Docteur expérimenté', 10 + u.id, u.id
+FROM users u
+WHERE u.email IN ('khalid.elmoussaoui@email.com', 'souad.maalouf@email.com', 'youssef.benali@email.com')
+  AND NOT EXISTS (SELECT 1 FROM doctors d WHERE d.user_id = u.id);
+
+-- ================================
+--  PATIENTS MAROCAINS
+-- ================================
+INSERT INTO users (email, password, role, first_name, last_name, phone, gender, date_of_birth, created_at, updated_at)
+VALUES
+('amina.cherkaoui@email.com', '$2b$10$hashed', 'PATIENT', 'Amina', 'Cherkaoui', '0644444444', 'FEMALE', '1990-05-15', NOW(), NOW()),
+('karim.elhassan@email.com', '$2b$10$hashed', 'PATIENT', 'Karim', 'Elhassan', '0655555555', 'MALE', '1985-08-20', NOW(), NOW())
+ON CONFLICT (email) DO NOTHING;
+
+INSERT INTO patients (user_id, blood_type, allergies, chronic_diseases, emergency_contact)
+SELECT u.id, 
+       CASE WHEN u.email = 'amina.cherkaoui@email.com' THEN 'O+' ELSE 'A-' END,
+       ARRAY['pénicilline']::TEXT[],
+       ARRAY['diabète']::TEXT[],
+       '{"name": "Famille", "phone": "0600000000", "relation": "parent"}'::JSONB
+FROM users u
+WHERE u.email IN ('amina.cherkaoui@email.com', 'karim.elhassan@email.com')
+  AND NOT EXISTS (SELECT 1 FROM patients p WHERE p.user_id = u.id);
+
+-- ================================
+--  CRÉNEAUX
+-- ================================
+INSERT INTO availability_slots (doctor_id, day_of_week, start_time, end_time)
+SELECT d.id, 1, '08:00', '18:00' FROM doctors d WHERE d.id = 1
+ON CONFLICT DO NOTHING;
+
+INSERT INTO availability_slots (doctor_id, day_of_week, start_time, end_time)
+SELECT d.id, 2, '09:00', '17:00' FROM doctors d WHERE d.id = 2
+ON CONFLICT DO NOTHING;
+
+INSERT INTO availability_slots (doctor_id, day_of_week, start_time, end_time)
+SELECT d.id, 3, '10:00', '16:00' FROM doctors d WHERE d.id = 3
+ON CONFLICT DO NOTHING;
+
+
+-- ================================
+--  AVIS
+-- ================================
+INSERT INTO reviews (doctor_id, patient_id, rating, comment, verified)
+SELECT d.id, p.id, 5, 'Excellent médecin.', true
+FROM doctors d, patients p
+WHERE d.id = 1 AND p.id = 1
+ON CONFLICT DO NOTHING;
+
+INSERT INTO reviews (doctor_id, patient_id, rating, comment, verified)
+SELECT d.id, p.id, 4, 'Bon spécialiste.', true
+FROM doctors d, patients p
+WHERE d.id = 2 AND p.id = 2
+ON CONFLICT DO NOTHING;
+
+-- ================================
+--  DOCTEURS - SPÉCIALITÉS (avec référence par nom)
+-- ================================
+
+-- Khalid Elmoussaoui → Médecin Généraliste
+INSERT INTO doctor_specialties (doctor_id, specialty_id, is_primary)
+SELECT d.id, s.id, true
+FROM doctors d
+JOIN users u ON d.user_id = u.id
+JOIN specialties s ON s.name = 'Médecin Généraliste'
+WHERE u.email = 'khalid.elmoussaoui@email.com'
+ON CONFLICT (doctor_id, specialty_id) DO NOTHING;
+
+-- Souad Maalouf → Cardiologue
+INSERT INTO doctor_specialties (doctor_id, specialty_id, is_primary)
+SELECT d.id, s.id, true
+FROM doctors d
+JOIN users u ON d.user_id = u.id
+JOIN specialties s ON s.name = 'Cardiologue'
+WHERE u.email = 'souad.maalouf@email.com'
+ON CONFLICT (doctor_id, specialty_id) DO NOTHING;
+
+-- Youssef Benali → Dermatologue
+INSERT INTO doctor_specialties (doctor_id, specialty_id, is_primary)
+SELECT d.id, s.id, true
+FROM doctors d
+JOIN users u ON d.user_id = u.id
+JOIN specialties s ON s.name = 'Dermatologue'
+WHERE u.email = 'youssef.benali@email.com'
+ON CONFLICT (doctor_id, specialty_id) DO NOTHING;

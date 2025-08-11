@@ -1,0 +1,296 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Modèle User principal
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  role      UserRole @default(PATIENT)
+  
+  // Informations personnelles
+  firstName String
+  lastName  String
+  phone     String?
+  dateOfBirth DateTime?
+  gender    Gender?
+  profilePicture String?
+  
+  // Status et vérifications
+  isEmailVerified Boolean @default(false)
+  isActive       Boolean @default(true)
+  lastLoginAt    DateTime?
+  
+  // Tokens de vérification
+  emailVerificationToken   String?
+  emailVerificationExpires DateTime?
+  passwordResetToken       String?
+  passwordResetExpires     DateTime?
+  refreshToken            String?
+  refreshTokenExpires     DateTime?
+  
+  // Sécurité
+  loginAttempts     Int       @default(0)
+  lockUntil        DateTime?
+  twoFactorSecret  String?
+  twoFactorEnabled Boolean   @default(false)
+  
+  // Relations
+  patient Patient?
+  doctor  Doctor?
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+  
+  @@map("users")
+}
+
+// Modèle Patient
+model Patient {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Informations médicales spécifiques
+  bloodType        String?
+  allergies        String[]
+  chronicDiseases  String[]
+  emergencyContact Json? // {name, phone, relation}
+  insuranceInfo    Json? // {provider, policyNumber, etc}
+  
+  // Relations
+  appointments     Appointment[]
+  medicalRecords   String[] // IDs des dossiers médicaux en MongoDB
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("patients")
+}
+
+// Modèle Doctor
+model Doctor {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Informations professionnelles
+  licenseNumber    String    @unique
+  specialtyId      String
+  specialty        Specialty @relation(fields: [specialtyId], references: [id])
+  yearsExperience  Int       @default(0)
+  education        String[]
+  certifications   String[]
+  languages        String[]
+  
+  // Informations pratique
+  consultationFee  Decimal?  @db.Decimal(10, 2)
+  biography        String?
+  officeAddress    Json?     // {street, city, postalCode, country}
+  
+  // Status
+  isVerified       Boolean   @default(false)
+  isAvailable      Boolean   @default(true)
+  
+  // Relations
+  appointments     Appointment[]
+  schedules        Schedule[]
+  reviews          Review[]
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("doctors")
+}
+
+// Modèle Specialty (spécialités médicales)
+model Specialty {
+  id          String @id @default(uuid())
+  name        String @unique
+  description String?
+  icon        String?
+  
+  // Relations
+  doctors Doctor[]
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("specialties")
+}
+
+// Modèle Appointment
+model Appointment {
+  id        String @id @default(uuid())
+  
+  // Relations
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctorId  String
+  doctor    Doctor  @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  
+  // Informations du rendez-vous
+  scheduledAt    DateTime
+  duration       Int            @default(30) // en minutes
+  status         AppointmentStatus @default(SCHEDULED)
+  type           AppointmentType   @default(CONSULTATION)
+  
+  // Détails
+  reason         String
+  notes          String?
+  symptoms       String[]
+  
+  // Suivi
+  reminderSent   Boolean @default(false)
+  cancelReason   String?
+  cancelledAt    DateTime?
+  cancelledBy    String? // patientId ou doctorId
+  
+  // Relations avec MongoDB
+  medicalRecordId String? // ID du dossier médical créé après consultation
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("appointments")
+}
+
+// Modèle Schedule (horaires des médecins)
+model Schedule {
+  id       String @id @default(uuid())
+  doctorId String
+  doctor   Doctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  
+  // Horaires
+  dayOfWeek    Int      // 0 = Dimanche, 1 = Lundi, etc.
+  startTime    String   // Format "HH:MM"
+  endTime      String   // Format "HH:MM"
+  
+  // Configuration
+  slotDuration Int      @default(30) // en minutes
+  breakStart   String?  // Format "HH:MM"
+  breakEnd     String?  // Format "HH:MM"
+  
+  // Status
+  isActive     Boolean  @default(true)
+  
+  // Exceptions (jours fériés, congés)
+  exceptions   Json[]   // [{date: "YYYY-MM-DD", reason: "Holiday"}]
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([doctorId, dayOfWeek])
+  @@map("schedules")
+}
+
+// Modèle Review (avis des patients)
+model Review {
+  id        String @id @default(uuid())
+  
+  // Relations
+  patientId String
+  doctorId  String
+  doctor    Doctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  
+  // Contenu de l'avis
+  rating    Int    @db.SmallInt // 1-5 étoiles
+  comment   String?
+  
+  // Critères spécifiques
+  punctuality     Int? @db.SmallInt // 1-5
+  communication   Int? @db.SmallInt // 1-5
+  professionalism Int? @db.SmallInt // 1-5
+  
+  // Status
+  isVerified Boolean @default(false)
+  isPublic   Boolean @default(true)
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([patientId, doctorId]) // Un seul avis par patient/médecin
+  @@map("reviews")
+}
+
+// Modèle Notification
+model Notification {
+  id       String @id @default(uuid())
+  
+  // Destinataire
+  userId   String
+  
+  // Contenu
+  title    String
+  message  String
+  type     NotificationType
+  
+  // Données additionnelles
+  data     Json?
+  
+  // Status
+  isRead   Boolean @default(false)
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  readAt    DateTime?
+  
+  @@map("notifications")
+}
+
+// Enums
+enum UserRole {
+  PATIENT
+  DOCTOR
+  ADMIN
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum AppointmentStatus {
+  SCHEDULED    // Planifié
+  CONFIRMED    // Confirmé
+  IN_PROGRESS  // En cours
+  COMPLETED    // Terminé
+  CANCELLED    // Annulé
+  NO_SHOW      // Patient absent
+  RESCHEDULED  // Reporté
+}
+
+enum AppointmentType {
+  CONSULTATION    // Consultation générale
+  FOLLOW_UP      // Suivi
+  EMERGENCY      // Urgence
+  CHECK_UP       // Bilan de santé
+  VACCINATION    // Vaccination
+  SURGERY        // Chirurgie
+  THERAPY        // Thérapie
+}
+
+enum NotificationType {
+  APPOINTMENT_REMINDER
+  APPOINTMENT_CONFIRMED
+  APPOINTMENT_CANCELLED
+  APPOINTMENT_RESCHEDULED
+  MEDICAL_RECORD_UPDATED
+  SYSTEM_NOTIFICATION
+  PAYMENT_REMINDER
+}

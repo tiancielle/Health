@@ -1,0 +1,3 @@
+connect back with front
+update the doctor selction labels
+create a page of each doctor infos when clicking on a a doctor after the selection
