@@ -324,7 +324,7 @@ export default function SearchResults() {
                       key={doctor.id}
                       doctor={doctor}
                       viewMode={viewMode}
-                      onBookAppointment={() => handleBookAppointment(doctor)}
+                      // onBookAppointment={() => handleBookAppointment(doctor)}
                     />
                   ))}
                 </div>

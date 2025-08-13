@@ -1,0 +1,175 @@
+// Exemple de structure de données pour un médecin
+const exampleDoctor = {
+  id: "1",
+  firstName: "Ahmed",
+  lastName: "Benali",
+  specialty: "cardiologist",
+  rating: 4.8,
+  reviewCount: 127,
+  recommendationCount: 95,
+  profileImage: null, // URL de l'image ou null
+  address: "123 Rue Mohammed V, Casablanca",
+  distance: 2.5, // en kilomètres
+  nextAvailableSlot: "Aujourd'hui à 14h30",
+  description: "Un excellent cardiologue, très professionnel et à l'écoute",
+  phone: "+212 522 123 456",
+  email: "dr.benali@example.com",
+  consultationPrice: 300, // en MAD
+  teleconsultationPrice: 200,
+  acceptsNewPatients: true,
+  teleconsultationAvailable: true,
+  verified: true,
+  languages: ["Français", "Arabe", "Anglais"],
+  bio: "Dr. Ahmed Benali est un cardiologue expérimenté avec plus de 15 ans d'expérience...",
+  clinics: [
+    {
+      name: "Clinique Al Amal",
+      address: "123 Rue Mohammed V, Casablanca",
+      phone: "+212 522 123 456"
+    }
+  ],
+  education: [
+    {
+      degree: "Doctorat en Médecine - Cardiologie",
+      institution: "Université Mohammed V",
+      year: "2008"
+    }
+  ],
+  experience: [
+    {
+      position: "Cardiologue senior",
+      institution: "Hôpital Universitaire Ibn Sina",
+      period: "2010 - Présent"
+    }
+  ]
+};
+
+// Service API modifié pour tests avec données factices
+// client/src/services/doctorService.js (version de test)
+const mockDoctors = [
+  {
+    id: "1",
+    firstName: "Ahmed",
+    lastName: "Benali",
+    specialty: "cardiologist",
+    rating: 4.8,
+    reviewCount: 127,
+    recommendationCount: 95,
+    profileImage: null,
+    address: "123 Rue Mohammed V, Casablanca",
+    distance: 2.5,
+    nextAvailableSlot: "Aujourd'hui à 14h30",
+    description: "Un excellent cardiologue, très professionnel et à l'écoute",
+    phone: "+212 522 123 456",
+    email: "dr.benali@example.com",
+    consultationPrice: 300,
+    teleconsultationPrice: 200,
+    acceptsNewPatients: true,
+    teleconsultationAvailable: true,
+    verified: true,
+    languages: ["Français", "Arabe", "Anglais"],
+    bio: "Dr. Ahmed Benali est un cardiologue expérimenté avec plus de 15 ans d'expérience dans le traitement des maladies cardiovasculaires.",
+    clinics: [
+      {
+        name: "Clinique Al Amal",
+        address: "123 Rue Mohammed V, Casablanca",
+        phone: "+212 522 123 456"
+      }
+    ],
+    education: [
+      {
+        degree: "Doctorat en Médecine - Cardiologie",
+        institution: "Université Mohammed V",
+        year: "2008"
+      }
+    ],
+    experience: [
+      {
+        position: "Cardiologue senior",
+        institution: "Hôpital Universitaire Ibn Sina",
+        period: "2010 - Présent"
+      }
+    ]
+  },
+  {
+    id: "2",
+    firstName: "Fatima",
+    lastName: "Alaoui",
+    specialty: "dermatologist",
+    rating: 4.6,
+    reviewCount: 89,
+    recommendationCount: 72,
+    profileImage: null,
+    address: "456 Avenue Hassan II, Rabat",
+    distance: 15.3,
+    nextAvailableSlot: "Demain à 9h00",
+    description: "Dermatologue spécialisée dans les soins de la peau",
+    phone: "+212 537 456 789",
+    consultationPrice: 250,
+    acceptsNewPatients: true,
+    teleconsultationAvailable: false,
+    verified: true,
+    languages: ["Français", "Arabe"],
+    clinics: [
+      {
+        name: "Cabinet Dr. Alaoui",
+        address: "456 Avenue Hassan II, Rabat",
+        phone: "+212 537 456 789"
+      }
+    ]
+  },
+  {
+    id: "3",
+    firstName: "Omar",
+    lastName: "Chakib",
+    specialty: "general-practitioner",
+    rating: 4.9,
+    reviewCount: 203,
+    recommendationCount: 180,
+    profileImage: null,
+    address: "789 Rue de la Liberté, Marrakech",
+    distance: 45.7,
+    nextAvailableSlot: "Dans 3 jours",
+    description: "Médecin généraliste avec une approche holistique",
+    phone: "+212 524 789 123",
+    consultationPrice: 200,
+    teleconsultationPrice: 150,
+    acceptsNewPatients: true,
+    teleconsultationAvailable: true,
+    verified: true,
+    languages: ["Français", "Arabe", "Berbère"],
+    clinics: [
+      {
+        name: "Polyclinique Atlas",
+        address: "789 Rue de la Liberté, Marrakech",
+        phone: "+212 524 789 123"
+      }
+    ]
+  }
+];
+
+// Version modifiée du service pour les tests
+const doctorServiceTest = {
+  getDoctorById: async (doctorId) => {
+    // Simuler un délai d'API
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    const doctor = mockDoctors.find(d => d.id === doctorId);
+    if (!doctor) {
+      throw new Error('Médecin non trouvé');
+    }
+    return doctor;
+  },
+  
+  getAllDoctors: async (params = {}) => {
+    await new Promise(resolve => setTimeout(resolve, 800));
+    return {
+      doctors: mockDoctors,
+      total: mockDoctors.length,
+      page: 1,
+      totalPages: 1
+    };
+  }
+};
+
+export default doctorServiceTest;

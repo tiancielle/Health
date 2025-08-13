@@ -1,58 +1,67 @@
-/**
- * Modèles PostgreSQL via Prisma Client
- * 
- * Ce fichier exporte les modèles Prisma pour être utilisés dans les contrôleurs et services.
- * Il remplace Sequelize tout en gardant une interface similaire.
- */
-
+// models/postgresql/index.js
 // On récupère Prisma Client depuis la configuration
 const { prisma } = require('../../config/database');
 
-// === Export des modèles ===
+// ❌ PROBLÈME : Supprimez ces imports qui n'existent pas
+// const User = require('./User');
+// const Doctor = require('./Doctor');
+
+// === Export des modèles avec Prisma ===
 // Chaque modèle correspond à un modèle Prisma dans schema.prisma
 const User = {
-  findMany: prisma.user.findMany,
-  findUnique: prisma.user.findUnique,
-  create: prisma.user.create,
-  update: prisma.user.update,
-  delete: prisma.user.delete,
-  deleteMany: prisma.user.deleteMany,
+  findMany: (args) => prisma.user.findMany(args),
+  findUnique: (args) => prisma.user.findUnique(args),
+  findFirst: (args) => prisma.user.findFirst(args),
+  create: (args) => prisma.user.create(args),
+  update: (args) => prisma.user.update(args),
+  delete: (args) => prisma.user.delete(args),
+  deleteMany: (args) => prisma.user.deleteMany(args),
+  count: (args) => prisma.user.count(args),
 };
 
 const Patient = {
-  findMany: prisma.patient.findMany,
-  findUnique: prisma.patient.findUnique,
-  create: prisma.patient.create,
-  update: prisma.patient.update,
-  delete: prisma.patient.delete,
-  deleteMany: prisma.patient.deleteMany,
+  findMany: (args) => prisma.patient.findMany(args),
+  findUnique: (args) => prisma.patient.findUnique(args),
+  findFirst: (args) => prisma.patient.findFirst(args),
+  create: (args) => prisma.patient.create(args),
+  update: (args) => prisma.patient.update(args),
+  delete: (args) => prisma.patient.delete(args),
+  deleteMany: (args) => prisma.patient.deleteMany(args),
+  count: (args) => prisma.patient.count(args),
 };
 
 const Doctor = {
-  findMany: prisma.doctor.findMany,
-  findUnique: prisma.doctor.findUnique,
-  create: prisma.doctor.create,
-  update: prisma.doctor.update,
-  delete: prisma.doctor.delete,
-  deleteMany: prisma.doctor.deleteMany,
+  findMany: (args) => prisma.doctor.findMany(args),
+  findUnique: (args) => prisma.doctor.findUnique(args),
+  findFirst: (args) => prisma.doctor.findFirst(args),
+  create: (args) => prisma.doctor.create(args),
+  update: (args) => prisma.doctor.update(args),
+  delete: (args) => prisma.doctor.delete(args),
+  deleteMany: (args) => prisma.doctor.deleteMany(args),
+  count: (args) => prisma.doctor.count(args),
+  groupBy: (args) => prisma.doctor.groupBy(args),
 };
 
 const Specialty = {
-  findMany: prisma.specialty.findMany,
-  findUnique: prisma.specialty.findUnique,
-  create: prisma.specialty.create,
-  update: prisma.specialty.update,
-  delete: prisma.specialty.delete,
-  deleteMany: prisma.specialty.deleteMany,
+  findMany: (args) => prisma.specialty.findMany(args),
+  findUnique: (args) => prisma.specialty.findUnique(args),
+  findFirst: (args) => prisma.specialty.findFirst(args),
+  create: (args) => prisma.specialty.create(args),
+  update: (args) => prisma.specialty.update(args),
+  delete: (args) => prisma.specialty.delete(args),
+  deleteMany: (args) => prisma.specialty.deleteMany(args),
+  count: (args) => prisma.specialty.count(args),
 };
 
 const Appointment = {
-  findMany: prisma.appointment.findMany,
-  findUnique: prisma.appointment.findUnique,
-  create: prisma.appointment.create,
-  update: prisma.appointment.update,
-  delete: prisma.appointment.delete,
-  deleteMany: prisma.appointment.deleteMany,
+  findMany: (args) => prisma.appointment.findMany(args),
+  findUnique: (args) => prisma.appointment.findUnique(args),
+  findFirst: (args) => prisma.appointment.findFirst(args),
+  create: (args) => prisma.appointment.create(args),
+  update: (args) => prisma.appointment.update(args),
+  delete: (args) => prisma.appointment.delete(args),
+  deleteMany: (args) => prisma.appointment.deleteMany(args),
+  count: (args) => prisma.appointment.count(args),
 };
 
 // === Export principal ===
@@ -65,13 +74,25 @@ module.exports = {
   prisma, // Accès direct au client Prisma si nécessaire
 };
 
-// === Fonction utilitaire optionnelle ===
+// === Fonction utilitaire ===
 // Pour vérifier que la connexion est prête
 module.exports.isReady = async () => {
   try {
     await prisma.$queryRaw`SELECT 1`;
     return true;
   } catch (error) {
+    console.error('❌ Test de connexion échoué:', error.message);
     return false;
   }
 };
+
+// ❌ PROBLÈME : Supprimez ces lignes Sequelize dans un projet Prisma
+// User.hasOne(Doctor, { 
+//   foreignKey: 'userId', 
+//   as: 'doctorProfile' 
+// });
+
+// Doctor.belongsTo(User, { 
+//   foreignKey: 'userId', 
+//   as: 'user' 
+// });

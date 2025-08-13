@@ -1,73 +1,57 @@
-
-// module.exports = router;
 // server/src/routes/doctors.js
 const express = require('express');
-const prisma = require('../prismaClient');
 const router = express.Router();
+const doctorController = require('../controllers/doctorController');
 
-// GET /api/doctors?query=&location=
-router.get('/', async (req, res) => {
-  const { query, location } = req.query;
+// Middleware de rate limiting simple (optionnel)
+const rateLimiter = (req, res, next) => {
+  // Implémentation basique ou utiliser express-rate-limit
+  next();
+};
 
-  try {
-    // Filtre Prisma
-    const where = {
-      user: { role: 'doctor' },
-      available: true
-    };
+/**
+ * @route   GET /api/doctors/search
+ * @desc    Rechercher des médecins
+ * @access  Public
+ * @params  
+ *   - q: terme de recherche (nom, spécialité)
+ *   - location: ville ou code postal
+ *   - specialty: spécialité spécifique
+ *   - minRating: note minimum
+ *   - availability: disponibilité
+ *   - maxDistance: distance maximale
+ *   - sortBy: critère de tri
+ *   - page: numéro de page
+ *   - limit: nombre de résultats par page
+ */
+router.get('/search', rateLimiter, doctorController.searchDoctors);
 
-    if (query) {
-      where.OR = [
-        { firstName: { contains: query, mode: 'insensitive' } },
-        { lastName: { contains: query, mode: 'insensitive' } },
-        { specialty: { name: { contains: query, mode: 'insensitive' } } }
-      ];
-    }
+/**
+ * @route   GET /api/doctors/suggestions
+ * @desc    Obtenir des suggestions de recherche
+ * @access  Public
+ */
+router.get('/suggestions', rateLimiter, doctorController.getSearchSuggestions);
 
-    if (location) {
-      where.city = { contains: location, mode: 'insensitive' };
-    }
+/**
+ * @route   GET /api/doctors/popular
+ * @desc    Obtenir les médecins populaires
+ * @access  Public
+ */
+router.get('/popular', rateLimiter, doctorController.getPopularDoctors);
 
-    const doctors = await prisma.doctor.findMany({
-      where,
-      include: {
-        user: true,
-        specialty: true
-      }
-    });
+/**
+ * @route   GET /api/doctors/specialties
+ * @desc    Obtenir la liste des spécialités
+ * @access  Public
+ */
+router.get('/specialties', rateLimiter, doctorController.getSpecialties);
 
-    // Formate pour le frontend
-    const formatted = doctors.map(d => ({
-      id: d.id,
-      firstName: d.firstName,
-      lastName: d.lastName,
-      specialty: d.specialty.name.toLowerCase().replace(/\s+/g, '-'),
-      rating: d.rating || 4.5,
-      reviewCount: d.reviewCount || 0,
-      profileImage: d.pictureUrl || null,
-      location: `${d.city}, ${d.postalCode}`,
-      address: d.address,
-      distance: '2.5 km',
-      nextAvailableSlot: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
-      consultationFee: d.consultationFee || 100,
-      languages: ['English'], // À ajouter dans la DB plus tard
-      experience: d.experience || 10,
-      verified: d.verified || false,
-      acceptsInsurance: d.acceptsInsurance || false,
-      availableToday: d.available
-    }));
-
-    res.json({
-      doctors: formatted,
-      total: formatted.length,
-      page: 1,
-      limit: 10,
-      totalPages: 1
-    });
-  } catch (error) {
-    console.error('Erreur /api/doctors:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
-});
+/**
+ * @route   GET /api/doctors/:id
+ * @desc    Obtenir les détails d'un médecin
+ * @access  Public
+ */
+router.get('/:id', rateLimiter, doctorController.getDoctorDetails);
 
 module.exports = router;

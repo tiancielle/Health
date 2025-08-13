@@ -1,3 +1,4 @@
+// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,187 +8,116 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
-model specialties {
-  id                 Int                  @id @default(autoincrement())
-  name               String               @unique @db.VarChar(100)
-  description        String?
-  created_at         DateTime?            @default(now()) @db.Timestamp(6)
-  updated_at         DateTime?            @default(now()) @db.Timestamp(6)
-  disorders          disorders[]
-  doctor_specialties doctor_specialties[]
+model User {
+  id           String    @id @default(cuid())
+  firstName    String
+  lastName     String
+  email        String    @unique
+  password     String
+  role         UserRole  @default(PATIENT)
+  profileImage String?
+  phone        String?
+  isActive     Boolean   @default(true)
+  isVerified   Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  @@map("specialties")
+  // Relations
+  doctor  Doctor?
+  patient Patient?
+
+  @@map("users")
 }
 
-/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
-model disorders {
-  id           Int          @id @default(autoincrement())
-  name         String       @db.VarChar(150)
-  description  String?
-  specialty_id Int?
-  keywords     String[]
-  created_at   DateTime?    @default(now()) @db.Timestamp(6)
-  updated_at   DateTime?    @default(now()) @db.Timestamp(6)
-  specialty    specialties? @relation(fields: [specialty_id], references: [id], onUpdate: NoAction)
+model Doctor {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  specialty           String
+  licenseNumber       String   @unique
+  experienceYears     Int      @default(0)
+  education           Json?
+  about               String?
+  consultationFee     Float?
+  address             String?
+  city                String?
+  zipCode             String?
+  phone               String?
+  languages           Json?
+  averageRating       Float    @default(0.0)
+  totalReviews        Int      @default(0)
+  isActive            Boolean  @default(true)
+  isVerified          Boolean  @default(false)
+  acceptsInsurance    Boolean  @default(false)
+  isAvailableToday    Boolean  @default(false)
+  nextAvailableSlot   String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-  @@index([keywords], map: "idx_disorders_keywords", type: Gin)
-  @@map("disorders")
-}
-
-model addresses {
-  id             Int       @id @default(autoincrement())
-  street_address String?   @db.VarChar(255)
-  city           String    @db.VarChar(100)
-  state          String?   @db.VarChar(100)
-  postal_code    String?   @db.VarChar(20)
-  country        String?   @default("Maroc") @db.VarChar(100)
-  latitude       Decimal?  @db.Decimal(10, 8)
-  longitude      Decimal?  @db.Decimal(11, 8)
-  created_at     DateTime? @default(now()) @db.Timestamp(6)
-  doctors        doctors[]
-
-  @@index([city], map: "idx_addresses_city")
-  @@map("addresses")
-}
-
-model doctors {
-  id                 Int                  @id @default(autoincrement())
-  user_id            Int                  @unique
-  license_number     String               @unique @db.VarChar(100)
-  consultation_fee   Decimal?             @db.Decimal(10, 2)
-  bio                String?
-  experience_years   Int?                 @default(0)
-  education          String?
-  certifications     String[]
-  languages          String[]             @default(["arabe", "français"])
-  address_id         Int?
-  is_verified        Boolean?             @default(false)
-  is_available       Boolean?             @default(true)
-  created_at         DateTime?            @default(now()) @db.Timestamp(6)
-  updated_at         DateTime?            @default(now()) @db.Timestamp(6)
-  availability_slots availability_slots[]
-  doctor_specialties doctor_specialties[]
-  address            addresses?           @relation(fields: [address_id], references: [id], onUpdate: NoAction)
-  users              users                @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  reviews            reviews[]
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("doctors")
 }
 
-model doctor_specialties {
-  id            Int         @id @default(autoincrement())
-  doctor_id     Int
-  specialty_id  Int
-  is_primary    Boolean?    @default(false)
-  certification String?     @db.VarChar(255)
-  doctor        doctors     @relation(fields: [doctor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  specialty     specialties @relation(fields: [specialty_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+model Patient {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  dateOfBirth DateTime?
+  gender      Gender?
+  bloodType   String?
+  allergies   Json?
+  medications Json?
+  emergencyContact Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  @@unique([doctor_id, specialty_id])
-  @@map("doctor_specialties")
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("patients")
 }
 
-model availability_slots {
-  id          Int       @id @default(autoincrement())
-  doctor_id   Int
-  day_of_week Int
-  start_time  DateTime  @db.Time(6)
-  end_time    DateTime  @db.Time(6)
-  is_active   Boolean?  @default(true)
-  created_at  DateTime? @default(now()) @db.Timestamp(6)
-  doctor      doctors   @relation(fields: [doctor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+model Appointment {
+  id          String            @id @default(cuid())
+  doctorId    String
+  patientId   String
+  dateTime    DateTime
+  duration    Int               @default(30) // en minutes
+  status      AppointmentStatus @default(PENDING)
+  reason      String?
+  notes       String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
 
-  @@map("availability_slots")
+  @@map("appointments")
 }
 
-model reviews {
-  id         Int       @id @default(autoincrement())
-  doctor_id  Int
-  patient_id Int
-  rating     Int
-  comment    String?
-  verified   Boolean?  @default(false)
-  created_at DateTime? @default(now()) @db.Timestamp(6)
-  doctor     doctors   @relation(fields: [doctor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  patients   patients  @relation(fields: [patient_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+model Specialty {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  @@map("reviews")
-}
-
-model patients {
-  id                Int       @id @default(autoincrement())
-  user_id           Int       @unique
-  blood_type        String?   @db.VarChar(5)
-  allergies         String[]
-  chronic_diseases  String[]
-  emergency_contact Json?
-  insurance_info    Json?
-  created_at        DateTime? @default(now()) @db.Timestamp(6)
-  updated_at        DateTime? @default(now()) @db.Timestamp(6)
-  users             users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  reviews           reviews[]
-}
-
-/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
-model users {
-  id            Int       @id @default(autoincrement())
-  email         String    @unique @db.VarChar(255)
-  password      String    @db.VarChar(255)
-  role          String    @default("PATIENT") @db.VarChar(20)
-  is_verified   Boolean?  @default(false)
-  first_name    String    @db.VarChar(100)
-  last_name     String    @db.VarChar(100)
-  phone         String?   @db.VarChar(20)
-  date_of_birth DateTime? @db.Date
-  gender        String?   @db.VarChar(10)
-  profile_image String?   @db.VarChar(500)
-  is_doctor     Boolean?  @default(false)
-  created_at    DateTime? @default(now()) @db.Timestamp(6)
-  updated_at    DateTime? @default(now()) @db.Timestamp(6)
-  doctors       doctors?
-  patients      patients?
-
-  @@index([email], map: "idx_users_email")
-}
-
-enum AppointmentStatus {
-  SCHEDULED
-  CONFIRMED
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-  NO_SHOW
-  RESCHEDULED
-}
-
-enum AppointmentType {
-  CONSULTATION
-  FOLLOW_UP
-  EMERGENCY
-  CHECK_UP
-  VACCINATION
-  SURGERY
-  THERAPY
-}
-
-enum Gender {
-  MALE
-  FEMALE
-}
-
-enum NotificationType {
-  APPOINTMENT_REMINDER
-  APPOINTMENT_CONFIRMED
-  APPOINTMENT_CANCELLED
-  APPOINTMENT_RESCHEDULED
-  MEDICAL_RECORD_UPDATED
-  SYSTEM_NOTIFICATION
-  PAYMENT_REMINDER
+  @@map("specialties")
 }
 
 enum UserRole {
   PATIENT
   DOCTOR
   ADMIN
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
 }

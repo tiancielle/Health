@@ -1,208 +1,147 @@
 // client/src/components/common/DoctorCard.jsx
 import React from 'react';
-import { Star, MapPin, Clock, Calendar, Heart, Shield, Award, Phone } from 'lucide-react';
-import Avatar from './Avatar';
+import { Star, MapPin, Clock, Phone, Award, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
-export default function DoctorCard({ 
-  doctor, 
-  viewMode = 'grid', 
-  onBookAppointment,
-  onViewProfile,
-  showBookButton = true 
-}) {
-  const {
-    id,
-    firstName,
-    lastName,
-    specialty,
-    rating,
-    reviewCount,
-    profileImage,
-    location,
-    address,
-    distance,
-    nextAvailableSlot,
-    consultationFee,
-    languages,
-    experience,
-    verified,
-    acceptsInsurance,
-    availableToday
-  } = doctor;
+export default function DoctorCard({ doctor, viewMode = 'grid' }) {
+  const navigate = useNavigate();
 
-  const fullName = `Dr. ${firstName} ${lastName}`;
-  
-  const handleBookClick = (e) => {
-    e.stopPropagation();
-    if (onBookAppointment) {
-      onBookAppointment(doctor);
-    }
+  const handleSeeDetails = () => {
+    navigate(`/doctor/${doctor.id}`);
   };
 
-  const handleCardClick = () => {
-    if (onViewProfile) {
-      onViewProfile(doctor);
-    }
+  // Fonction pour obtenir la couleur du badge selon la spécialité
+  const getSpecialtyColor = (specialty) => {
+    const colors = {
+      'general-practitioner': 'bg-blue-100 text-blue-800',
+      'cardiologist': 'bg-red-100 text-red-800',
+      'dermatologist': 'bg-green-100 text-green-800',
+      'dentist': 'bg-purple-100 text-purple-800',
+      'gynecologist': 'bg-pink-100 text-pink-800',
+      'ophthalmologist': 'bg-indigo-100 text-indigo-800',
+      'pediatrician': 'bg-yellow-100 text-yellow-800',
+      'psychiatrist': 'bg-teal-100 text-teal-800'
+    };
+    return colors[specialty] || 'bg-gray-100 text-gray-800';
   };
 
-  const formatNextSlot = (slot) => {
-    if (!slot) return 'Contact for availability';
-    
-    const date = new Date(slot);
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    
-    if (date.toDateString() === today.toDateString()) {
-      return `Today at ${date.toLocaleTimeString('en-US', { 
-        hour: 'numeric', 
-        minute: '2-digit', 
-        hour12: true 
-      })}`;
-    } else if (date.toDateString() === tomorrow.toDateString()) {
-      return `Tomorrow at ${date.toLocaleTimeString('en-US', { 
-        hour: 'numeric', 
-        minute: '2-digit', 
-        hour12: true 
-      })}`;
-    } else {
-      return date.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric',
-        hour: 'numeric', 
-        minute: '2-digit', 
-        hour12: true 
-      });
-    }
+  // Fonction pour formater la spécialité
+  const formatSpecialty = (specialty) => {
+    const specialties = {
+      'general-practitioner': 'Médecin Généraliste',
+      'cardiologist': 'Cardiologue',
+      'dermatologist': 'Dermatologue',
+      'dentist': 'Dentiste',
+      'gynecologist': 'Gynécologue',
+      'ophthalmologist': 'Ophtalmologue',
+      'pediatrician': 'Pédiatre',
+      'psychiatrist': 'Psychiatre'
+    };
+    return specialties[specialty] || specialty;
   };
 
   if (viewMode === 'list') {
     return (
-      <div 
-        className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200 cursor-pointer overflow-hidden"
-        onClick={handleCardClick}
-      >
-        <div className="p-6">
-          <div className="flex items-start space-x-4">
-            {/* Photo et badges */}
-            <div className="relative flex-shrink-0">
-              <Avatar 
-                src={profileImage} 
-                alt={fullName}
-                size="large"
-                className="ring-2 ring-gray-100"
-              />
-              {verified && (
-                <div className="absolute -top-1 -right-1 bg-blue-500 rounded-full p-1">
-                  <Shield className="h-3 w-3 text-white" />
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+        <div className="flex flex-col md:flex-row gap-4">
+          {/* Photo du médecin */}
+          <div className="flex-shrink-0">
+            <div className="w-24 h-24 rounded-full bg-gray-200 overflow-hidden">
+              {doctor.profileImage ? (
+                <img
+                  src={doctor.profileImage}
+                  alt={`Dr. ${doctor.firstName} ${doctor.lastName}`}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-[#4d89b1] text-white text-2xl font-bold">
+                  {doctor.firstName?.charAt(0)}{doctor.lastName?.charAt(0)}
                 </div>
-              )}
-              {availableToday && (
-                <div className="absolute -bottom-1 -right-1 bg-green-500 rounded-full w-4 h-4 border-2 border-white"></div>
               )}
             </div>
+          </div>
 
-            {/* Informations principales */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-1">
-                    {fullName}
-                  </h3>
-                  <p className="text-[#4d89b1] font-medium mb-2 capitalize">
-                    {specialty}
+          {/* Informations principales */}
+          <div className="flex-1">
+            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+              <div className="flex-1">
+                {/* Nom et spécialité */}
+                <h3 className="text-xl font-bold text-gray-900 mb-2">
+                  Dr. {doctor.firstName} {doctor.lastName}
+                </h3>
+                
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getSpecialtyColor(doctor.specialty)}`}>
+                    {formatSpecialty(doctor.specialty)}
+                  </span>
+                  
+                  {/* Note et recommandations */}
+                  {doctor.rating && (
+                    <div className="flex items-center">
+                      <div className="flex items-center">
+                        <Star className="h-4 w-4 text-yellow-400 fill-current" />
+                        <span className="ml-1 text-sm font-medium text-gray-900">
+                          {doctor.rating}
+                        </span>
+                      </div>
+                      <span className="text-sm text-gray-600 ml-1">
+                        ({doctor.reviewCount || 0} avis)
+                      </span>
+                    </div>
+                  )}
+                  
+                  {doctor.recommendationCount && (
+                    <div className="flex items-center text-sm text-gray-600">
+                      <Award className="h-4 w-4 mr-1" />
+                      <span>{doctor.recommendationCount} recommandations</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Localisation */}
+                {doctor.address && (
+                  <div className="flex items-center text-gray-600 mb-3">
+                    <MapPin className="h-4 w-4 mr-2" />
+                    <span className="text-sm">{doctor.address}</span>
+                    {doctor.distance && (
+                      <span className="text-sm ml-2">• {doctor.distance} km</span>
+                    )}
+                  </div>
+                )}
+
+                {/* Disponibilité */}
+                {doctor.nextAvailableSlot && (
+                  <div className="flex items-center text-green-600 mb-3">
+                    <Clock className="h-4 w-4 mr-2" />
+                    <span className="text-sm">
+                      Disponible {doctor.nextAvailableSlot}
+                    </span>
+                  </div>
+                )}
+
+                {/* Phrase d'accroche ou description */}
+                {doctor.description && (
+                  <p className="text-gray-600 text-sm line-clamp-2 mb-3">
+                    "{doctor.description}"
                   </p>
-                  
-                  {/* Rating et avis */}
-                  <div className="flex items-center space-x-4 mb-3">
-                    <div className="flex items-center space-x-1">
-                      <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                      <span className="font-medium text-gray-900">{rating}</span>
-                      <span className="text-gray-500">({reviewCount} reviews)</span>
-                    </div>
-                    {experience && (
-                      <div className="flex items-center space-x-1 text-gray-600">
-                        <Award className="h-4 w-4" />
-                        <span className="text-sm">{experience} years exp.</span>
-                      </div>
-                    )}
-                  </div>
+                )}
+              </div>
 
-                  {/* Localisation */}
-                  <div className="flex items-center space-x-2 text-gray-600 mb-3">
-                    <MapPin className="h-4 w-4" />
-                    <span className="text-sm">{address || location}</span>
-                    {distance && (
-                      <span className="text-sm text-gray-500">• {distance}</span>
-                    )}
-                  </div>
-
-                  {/* Langues */}
-                  {languages && languages.length > 0 && (
-                    <div className="flex items-center space-x-2 mb-3">
-                      <span className="text-sm text-gray-600">Languages:</span>
-                      <div className="flex flex-wrap gap-1">
-                        {languages.slice(0, 3).map((lang, index) => (
-                          <span 
-                            key={index}
-                            className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full"
-                          >
-                            {lang}
-                          </span>
-                        ))}
-                        {languages.length > 3 && (
-                          <span className="text-xs text-gray-500">
-                            +{languages.length - 3} more
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Prix et disponibilité */}
-                <div className="text-right ml-4">
-                  {consultationFee && (
-                    <div className="text-lg font-semibold text-gray-900 mb-1">
-                      ${consultationFee}
-                    </div>
-                  )}
-                  <div className="flex items-center space-x-1 text-sm text-gray-600 mb-3">
-                    <Clock className="h-4 w-4" />
-                    <span>{formatNextSlot(nextAvailableSlot)}</span>
-                  </div>
-                  
-                  {/* Badges */}
-                  <div className="flex flex-col space-y-1 mb-4">
-                    {acceptsInsurance && (
-                      <span className="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                        <Shield className="h-3 w-3 mr-1" />
-                        Insurance
-                      </span>
-                    )}
-                    {availableToday && (
-                      <span className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                        <Calendar className="h-3 w-3 mr-1" />
-                        Today
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Boutons d'action */}
-                  <div className="flex flex-col space-y-2">
-                    {showBookButton && (
-                      <button
-                        onClick={handleBookClick}
-                        className="bg-[#4d89b1] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#3d6c91] transition-colors duration-200"
-                      >
-                        Book Appointment
-                      </button>
-                    )}
-                    <button className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors duration-200">
-                      View Profile
-                    </button>
-                  </div>
-                </div>
+              {/* Actions */}
+              <div className="flex flex-col gap-2 md:ml-4">
+                <button
+                  onClick={handleSeeDetails}
+                  className="bg-[#4d89b1] text-white px-6 py-2 rounded-lg hover:bg-[#3d6c91] transition-colors font-medium"
+                >
+                  Voir détails
+                </button>
+                
+                {doctor.phone && (
+                  <button className="border border-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-50 transition-colors font-medium flex items-center justify-center">
+                    <Phone className="h-4 w-4 mr-2" />
+                    Appeler
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -213,124 +152,97 @@ export default function DoctorCard({
 
   // Mode grille (par défaut)
   return (
-    <div 
-      className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-lg hover:border-[#a0c3e0] transition-all duration-200 cursor-pointer overflow-hidden group"
-      onClick={handleCardClick}
-    >
-      {/* En-tête avec photo */}
-      <div className="relative p-6 pb-4">
-        <div className="flex items-start space-x-4">
-          <div className="relative">
-            <Avatar 
-              src={profileImage} 
-              alt={fullName}
-              size="medium"
-              className="ring-2 ring-gray-100 group-hover:ring-[#4d89b1] transition-all duration-200"
-            />
-            {verified && (
-              <div className="absolute -top-1 -right-1 bg-blue-500 rounded-full p-1">
-                <Shield className="h-3 w-3 text-white" />
-              </div>
-            )}
-            {availableToday && (
-              <div className="absolute -bottom-1 -right-1 bg-green-500 rounded-full w-3 h-3 border-2 border-white"></div>
-            )}
-          </div>
-          
-          <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-semibold text-gray-900 mb-1 group-hover:text-[#4d89b1] transition-colors">
-              {fullName}
-            </h3>
-            <p className="text-[#4d89b1] font-medium text-sm capitalize">
-              {specialty}
-            </p>
-          </div>
-
-          {/* Icône favoris */}
-          <button className="p-1 hover:bg-gray-100 rounded-full transition-colors">
-            <Heart className="h-5 w-5 text-gray-400 hover:text-red-500" />
-          </button>
-        </div>
-
-        {/* Rating */}
-        <div className="flex items-center space-x-2 mt-3">
-          <div className="flex items-center space-x-1">
-            <Star className="h-4 w-4 text-yellow-400 fill-current" />
-            <span className="font-medium text-gray-900 text-sm">{rating}</span>
-          </div>
-          <span className="text-gray-500 text-sm">({reviewCount})</span>
-          {experience && (
-            <span className="text-gray-500 text-sm">• {experience}y exp.</span>
-          )}
-        </div>
-      </div>
-
-      {/* Informations */}
-      <div className="px-6 pb-4">
-        {/* Localisation */}
-        <div className="flex items-center space-x-2 text-gray-600 mb-3">
-          <MapPin className="h-4 w-4 flex-shrink-0" />
-          <span className="text-sm truncate">{location}</span>
-          {distance && (
-            <span className="text-sm text-gray-500 flex-shrink-0">• {distance}</span>
-          )}
-        </div>
-
-        {/* Disponibilité */}
-        <div className="flex items-center space-x-2 text-gray-600 mb-4">
-          <Clock className="h-4 w-4 flex-shrink-0" />
-          <span className="text-sm">{formatNextSlot(nextAvailableSlot)}</span>
-        </div>
-
-        {/* Badges */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          {acceptsInsurance && (
-            <span className="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-              <Shield className="h-3 w-3 mr-1" />
-              Insurance
-            </span>
-          )}
-          {availableToday && (
-            <span className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-              <Calendar className="h-3 w-3 mr-1" />
-              Today
-            </span>
-          )}
-          {languages && languages.length > 0 && (
-            <span className="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
-              {languages[0]}
-              {languages.length > 1 && ` +${languages.length - 1}`}
-            </span>
-          )}
-        </div>
-
-        {/* Prix */}
-        {consultationFee && (
-          <div className="text-center mb-4">
-            <span className="text-lg font-semibold text-gray-900">
-              ${consultationFee}
-            </span>
-            <span className="text-gray-500 text-sm ml-1">consultation</span>
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+      {/* Photo du médecin */}
+      <div className="aspect-w-3 aspect-h-2 bg-gray-200">
+        {doctor.profileImage ? (
+          <img
+            src={doctor.profileImage}
+            alt={`Dr. ${doctor.firstName} ${doctor.lastName}`}
+            className="w-full h-48 object-cover"
+          />
+        ) : (
+          <div className="w-full h-48 flex items-center justify-center bg-[#4d89b1] text-white text-4xl font-bold">
+            {doctor.firstName?.charAt(0)}{doctor.lastName?.charAt(0)}
           </div>
         )}
       </div>
 
-      {/* Actions */}
-      <div className="px-6 pb-6">
-        <div className="flex space-x-2">
-          {showBookButton && (
-            <button
-              onClick={handleBookClick}
-              className="flex-1 bg-[#4d89b1] text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-[#3d6c91] transition-colors duration-200 flex items-center justify-center space-x-2"
-            >
-              <Calendar className="h-4 w-4" />
-              <span>Book Now</span>
-            </button>
-          )}
-          <button className="flex-1 border border-gray-300 text-gray-700 py-2 px-4 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors duration-200">
-            View Profile
-          </button>
+      <div className="p-6">
+        {/* Nom et spécialité */}
+        <h3 className="text-lg font-bold text-gray-900 mb-2">
+          Dr. {doctor.firstName} {doctor.lastName}
+        </h3>
+        
+        <div className="mb-3">
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getSpecialtyColor(doctor.specialty)}`}>
+            {formatSpecialty(doctor.specialty)}
+          </span>
         </div>
+
+        {/* Note et recommandations */}
+        <div className="flex items-center justify-between mb-3">
+          {doctor.rating && (
+            <div className="flex items-center">
+              <div className="flex items-center">
+                <Star className="h-4 w-4 text-yellow-400 fill-current" />
+                <span className="ml-1 text-sm font-medium text-gray-900">
+                  {doctor.rating}
+                </span>
+              </div>
+              <span className="text-sm text-gray-600 ml-1">
+                ({doctor.reviewCount || 0})
+              </span>
+            </div>
+          )}
+          
+          {doctor.recommendationCount && (
+            <div className="flex items-center text-sm text-gray-600">
+              <Award className="h-4 w-4 mr-1" />
+              <span>{doctor.recommendationCount}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Localisation */}
+        {doctor.address && (
+          <div className="flex items-center text-gray-600 mb-3">
+            <MapPin className="h-4 w-4 mr-2" />
+            <span className="text-sm truncate">{doctor.address}</span>
+          </div>
+        )}
+
+        {/* Distance */}
+        {doctor.distance && (
+          <div className="text-sm text-gray-600 mb-3">
+            À {doctor.distance} km
+          </div>
+        )}
+
+        {/* Disponibilité */}
+        {doctor.nextAvailableSlot && (
+          <div className="flex items-center text-green-600 mb-4">
+            <Clock className="h-4 w-4 mr-2" />
+            <span className="text-sm">
+              Disponible {doctor.nextAvailableSlot}
+            </span>
+          </div>
+        )}
+
+        {/* Phrase d'accroche */}
+        {doctor.description && (
+          <p className="text-gray-600 text-sm line-clamp-3 mb-4">
+            "{doctor.description}"
+          </p>
+        )}
+
+        {/* Bouton d'action */}
+        <button
+          onClick={handleSeeDetails}
+          className="w-full bg-[#4d89b1] text-white py-2 px-4 rounded-lg hover:bg-[#3d6c91] transition-colors font-medium"
+        >
+          Voir détails
+        </button>
       </div>
     </div>
   );

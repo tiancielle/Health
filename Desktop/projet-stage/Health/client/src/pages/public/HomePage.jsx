@@ -1,20 +1,27 @@
 import React, { useState } from 'react';
 import { Search, MapPin, Calendar, Clock, Star, Shield, Users, Activity, ChevronRight, Menu, X, Filter, Grid, List } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { searchDoctors } from '../../services/searchService';
+import { searchService } from '../../services/searchService'; // 🔥 Correction du chemin d'import
 
-// Import des composants (simulés ici pour la démo)
+// Import des composants
 const SearchForm = ({ onSearch, className = '' }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [location, setLocation] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  
+  const [loading, setLoading] = useState(false);
 
-  const handleSearch = (query = searchQuery, loc = location) => {
+  // 🔥 Recherche avec appel API
+  const handleSearch = async (query = searchQuery, loc = location) => {
     if (!query.trim()) return;
-    onSearch(query.trim(), loc.trim());
-    setShowSuggestions(false);
+    
+    setLoading(true);
+    try {
+      await onSearch(query.trim(), loc.trim());
+    } finally {
+      setLoading(false);
+      setShowSuggestions(false);
+    }
   };
 
   const handleKeyDown = (e) => {
@@ -66,11 +73,20 @@ const SearchForm = ({ onSearch, className = '' }) => {
 
         <button
           onClick={() => handleSearch()}
-          disabled={!searchQuery.trim()}
+          disabled={loading || !searchQuery.trim()}
           className="w-full mt-6 bg-[#4d89b1] text-white py-3 px-8 rounded-xl text-base font-semibold hover:bg-[#3d6c91] disabled:bg-gray-300 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-[1.02] flex items-center justify-center space-x-2"
         >
-          <Search className="h-4 w-4" />
-          <span>Search</span>
+          {loading ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              <span>Searching...</span>
+            </>
+          ) : (
+            <>
+              <Search className="h-4 w-4" />
+              <span>Search</span>
+            </>
+          )}
         </button>
       </div>
     </div>
@@ -160,78 +176,109 @@ const Loading = () => (
   </div>
 );
 
+// 🔥 Nouveau composant pour afficher les résultats sur la même page
+const SearchResultsSection = ({ searchResults, isSearching, error, onClearSearch, onBookAppointment }) => {
+  if (!searchResults && !isSearching) return null;
+
+  return (
+    <section className="bg-gray-50 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* En-tête des résultats */}
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">
+              Search Results
+            </h2>
+            <p className="text-gray-600">
+              {searchResults && searchResults.total > 0 ? (
+                <>
+                  <span className="font-medium">{searchResults.total}</span> doctors found
+                  {searchResults.query && <> for "<span className="font-medium">{searchResults.query}</span>"</>}
+                  {searchResults.location && <> in <span className="font-medium">{searchResults.location}</span></>}
+                </>
+              ) : (
+                <>No doctors found for your search</>
+              )}
+            </p>
+          </div>
+          
+          <button
+            onClick={onClearSearch}
+            className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition"
+          >
+            Clear Search
+          </button>
+        </div>
+
+        {/* Message d'erreur */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <p className="text-red-700">{error}</p>
+          </div>
+        )}
+
+        {/* Résultats */}
+        {isSearching ? (
+          <Loading />
+        ) : searchResults && searchResults.doctors.length === 0 ? (
+          <div className="text-center py-16">
+            <Search className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">No doctors found</h3>
+            <p className="text-gray-600 mb-8">
+              Try adjusting your search criteria
+            </p>
+            <button
+              onClick={onClearSearch}
+              className="bg-[#4d89b1] text-white px-6 py-3 rounded-lg hover:bg-[#3d6c91] transition"
+            >
+              Clear Search
+            </button>
+          </div>
+        ) : searchResults && (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {searchResults.doctors.map((doctor) => (
+              <DoctorCard
+                key={doctor.id}
+                doctor={doctor}
+                onBookAppointment={onBookAppointment}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+};
+
 export default function HealthHomepage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchResults, setSearchResults] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchLocation, setSearchLocation] = useState('');
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  // // Données fictives pour la démonstration
-  // const mockDoctors = [
-  //   {
-  //     id: 1,
-  //     firstName: 'John',
-  //     lastName: 'Smith',
-  //     specialty: 'cardiologist',
-  //     rating: 4.8,
-  //     reviewCount: 127,
-  //     profileImage: null,
-  //     location: 'New York, NY',
-  //     nextAvailableSlot: 'Today at 2:00 PM',
-  //     consultationFee: 150,
-  //     verified: true,
-  //     availableToday: true
-  //   },
-  //   {
-  //     id: 2,
-  //     firstName: 'Sarah',
-  //     lastName: 'Johnson',
-  //     specialty: 'dermatologist',
-  //     rating: 4.9,
-  //     reviewCount: 89,
-  //     profileImage: null,
-  //     location: 'Los Angeles, CA',
-  //     nextAvailableSlot: 'Tomorrow at 10:00 AM',
-  //     consultationFee: 120,
-  //     verified: true,
-  //     availableToday: false
-  //   },
-  //   {
-  //     id: 3,
-  //     firstName: 'Michael',
-  //     lastName: 'Brown',
-  //     specialty: 'general-practitioner',
-  //     rating: 4.7,
-  //     reviewCount: 203,
-  //     profileImage: null,
-  //     location: 'Chicago, IL',
-  //     nextAvailableSlot: 'Today at 4:30 PM',
-  //     consultationFee: 100,
-  //     verified: true,
-  //     availableToday: true
-  //   }
-  // ];
-
-  
   const handleLoginClick = () => {
-    navigate('/auth/Login');
+    navigate('/auth/login');
   };
 
   const handleSignUpClick = () => {
-    navigate('/auth/Register');
+    navigate('/auth/register');
   };
 
+  // 🔥 Fonction de recherche connectée au backend - reste sur la même page
   const handleSearch = async (query, location) => {
     if (!query.trim()) return;
+    
     setIsSearching(true);
     setSearchQuery(query);
     setSearchLocation(location);
+    setError('');
 
     try {
-      // 🔥 Appel API au lieu des données simulées
-      const data = await searchDoctors(query, location);
+      // 🔥 Appel API au backend via le service
+      const data = await searchService.searchDoctors(query, location);
 
       setSearchResults({
         doctors: data.doctors || [],
@@ -239,8 +286,15 @@ export default function HealthHomepage() {
         query,
         location
       });
+
+      // 🔥 Scroll vers les résultats au lieu de naviguer
+      const resultsSection = document.getElementById('search-results');
+      if (resultsSection) {
+        resultsSection.scrollIntoView({ behavior: 'smooth' });
+      }
     } catch (error) {
       console.error('Erreur de recherche:', error);
+      setError('Unable to search for doctors. Please try again.');
       setSearchResults({
         doctors: [],
         total: 0,
@@ -256,10 +310,18 @@ export default function HealthHomepage() {
     setSearchResults(null);
     setSearchQuery('');
     setSearchLocation('');
+    setError('');
+    // 🔥 Scroll vers le haut de la page
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleBookAppointment = (doctor) => {
-    alert(`Booking appointment with ${doctor.firstName} ${doctor.lastName}`);
+    // Rediriger vers la page de prise de rendez-vous
+    navigate(`/patient/book-appointment/${doctor.id}`);
+  };
+
+  const handleSpecialtySearch = (specialtyName) => {
+    handleSearch(specialtyName, '');
   };
 
   const specialties = [
@@ -291,7 +353,7 @@ export default function HealthHomepage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <div className="flex-shrink-0 flex items-center cursor-pointer" onClick={() => { navigate('/'); clearSearch(); }}>
+              <div className="flex-shrink-0 flex items-center cursor-pointer" onClick={() => { clearSearch(); }}>
                 <Activity className="h-8 w-8 text-[#4d89b1]" />
                 <span className="ml-2 text-2xl font-bold text-gray-900">Health</span>
               </div>
@@ -349,8 +411,18 @@ export default function HealthHomepage() {
                 >
                   Find a Doctor
                 </button>
-                <a href="#" className="block px-3 py-2 text-gray-700 hover:text-[#4d89b1]">For Doctors</a>
-                <a href="#" className="block px-3 py-2 text-gray-700 hover:text-[#4d89b1]">About Us</a>
+                <button 
+                  onClick={() => navigate('/about-us')}
+                  className="block w-full text-left px-3 py-2 text-gray-700 hover:text-[#4d89b1]"
+                >
+                  About Us
+                </button>
+                <button 
+                  onClick={() => navigate('/for-doctors')}
+                  className="block w-full text-left px-3 py-2 text-gray-700 hover:text-[#4d89b1]"
+                >
+                  For Doctors
+                </button>
                 <div className="pt-4 pb-2 border-t border-gray-100">
                   <button 
                     className="block w-full text-left px-3 py-2 text-gray-700 hover:text-[#4d89b1]"
@@ -372,109 +444,51 @@ export default function HealthHomepage() {
         </div>
       </header>
 
-      {/* Affichage conditionnel : Résultats de recherche ou Page d'accueil */}
-      {searchResults ? (
-        /* Section Résultats de Recherche */
-        <div className="min-h-screen bg-gray-50">
-          {/* Barre de recherche en haut */}
-          <div className="bg-white border-b border-gray-200">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-              <SearchForm onSearch={handleSearch} />
-            </div>
+      {/* Hero avec image de fond */}
+      <section
+        className="py-20 relative"
+        style={{
+          backgroundImage: "url('/images/health_bg.PNG')",
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+        }}
+      >
+        <div className="absolute inset-0 bg-black/40"></div>
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-16 text-left text-white">
+            <h1 className="text-5xl md:text-6xl font-bold mb-6">
+              Your Health,
+              <span style={{ color: '#1f3a4b' }} className="block">Our Priority</span>
+            </h1>
+            <p className="text-xl max-w-3xl leading-relaxed">
+              Book online appointments with thousands of healthcare professionals. Securely manage your medical records.
+            </p>
           </div>
-
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            {/* En-tête des résultats */}
-            <div className="flex justify-between items-center mb-8">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                  Search Results
-                </h1>
-                <p className="text-gray-600">
-                  {searchResults.total > 0 ? (
-                    <>
-                      <span className="font-medium">{searchResults.total}</span> doctors found
-                      {searchQuery && <> for "<span className="font-medium">{searchQuery}</span>"</>}
-                      {searchLocation && <> in <span className="font-medium">{searchLocation}</span></>}
-                    </>
-                  ) : (
-                    <>No doctors found for your search</>
-                  )}
-                </p>
-              </div>
-              
-              <button
-                onClick={clearSearch}
-                className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition"
-              >
-                Back to Home
-              </button>
-            </div>
-
-            {/* Résultats */}
-            {isSearching ? (
-              <Loading />
-            ) : searchResults.doctors.length === 0 ? (
-              <div className="text-center py-16">
-                <Search className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">No doctors found</h3>
-                <p className="text-gray-600 mb-8">
-                  Try adjusting your search criteria
-                </p>
-                <button
-                  onClick={clearSearch}
-                  className="bg-[#4d89b1] text-white px-6 py-3 rounded-lg hover:bg-[#3d6c91] transition"
-                >
-                  Back to Home
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {searchResults.doctors.map((doctor) => (
-                  <DoctorCard
-                    key={doctor.id}
-                    doctor={doctor}
-                    onBookAppointment={handleBookAppointment}
-                  />
-                ))}
-              </div>
-            )}
+          
+          <div className="max-w-4xl ml-0 md:ml-0">
+            <SearchForm 
+              onSearch={handleSearch}
+              className="shadow-2xl"
+            />
           </div>
         </div>
-      ) : (
-        /* Page d'accueil normale */
-        <>
-          {/* Hero avec image de fond */}
-          <section
-            className="py-20 relative"
-            style={{
-              backgroundImage: "url('/images/health_bg.PNG')",
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              backgroundRepeat: 'no-repeat',
-            }}
-          >
-            <div className="absolute inset-0 bg-black/40"></div>
-            <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="mb-16 text-left text-white">
-                <h1 className="text-5xl md:text-6xl font-bold mb-6">
-                  Your Health,
-                  <span style={{ color: '#1f3a4b' }} className="block">Our Priority</span>
-                </h1>
-                <p className="text-xl max-w-3xl leading-relaxed">
-                  Book online appointments with thousands of healthcare professionals. Securely manage your medical records.
-                </p>
-              </div>
-              
-              <div className="max-w-4xl ml-0 md:ml-0">
-                <SearchForm 
-                  onSearch={handleSearch}
-                  className="shadow-2xl"
-                />
-              </div>
-            </div>
-          </section>
+      </section>
 
+      {/*  Section des résultats de recherche - s'affiche conditionnellement */}
+      <div id="search-results">
+        <SearchResultsSection
+          searchResults={searchResults}
+          isSearching={isSearching}
+          error={error}
+          onClearSearch={clearSearch}
+          onBookAppointment={handleBookAppointment}
+        />
+      </div>
+
+      {/* 🔥 Le reste du contenu s'affiche seulement si aucune recherche active */}
+      {!searchResults && (
+        <>
           {/* Specialties */}
           <section className="py-20 bg-white">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -487,7 +501,7 @@ export default function HealthHomepage() {
                   <div
                     key={index}
                     className="bg-white border border-gray-200 rounded-2xl p-8 text-center hover:border-[#a0c3e0] hover:shadow-lg transition-all duration-200 cursor-pointer group"
-                    onClick={() => handleSearch(specialty.name, '')}
+                    onClick={() => handleSpecialtySearch(specialty.name)}
                   >
                     <div className="mb-4">
                       <img
@@ -664,7 +678,7 @@ export default function HealthHomepage() {
                       {['General Practitioner', 'Dentist', 'Cardiologist', 'Dermatologist', 'Gynecologist', 'All Specialties'].map((item, i) => (
                         <li key={i}>
                           <button 
-                            onClick={() => handleSearch(item, '')}
+                            onClick={() => handleSpecialtySearch(item)}
                             className="text-gray-600 hover:text-[#4d89b1] transition text-left"
                           >
                             {item}

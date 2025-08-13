@@ -1,3 +1,4 @@
+// src/config/environment.js
 const dotenv = require('dotenv');
 const path = require('path');
 
