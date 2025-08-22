@@ -7,7 +7,15 @@ export default function DoctorCard({ doctor, viewMode = 'grid' }) {
   const navigate = useNavigate();
 
   const handleSeeDetails = () => {
+    console.log('Navigating to doctor:', doctor.id); // Debug log
     navigate(`/doctor/${doctor.id}`);
+  };
+
+  const handleCall = (e) => {
+    e.stopPropagation(); // Empêche la navigation vers le profil
+    if (doctor.phone) {
+      window.open(`tel:${doctor.phone}`, '_self');
+    }
   };
 
   // Fonction pour obtenir la couleur du badge selon la spécialité
@@ -40,6 +48,12 @@ export default function DoctorCard({ doctor, viewMode = 'grid' }) {
     return specialties[specialty] || specialty;
   };
 
+  // Vérifier que le docteur a un ID
+  if (!doctor || !doctor.id) {
+    console.error('Doctor object missing or no ID:', doctor);
+    return null;
+  }
+
   if (viewMode === 'list') {
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
@@ -55,7 +69,7 @@ export default function DoctorCard({ doctor, viewMode = 'grid' }) {
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-[#4d89b1] text-white text-2xl font-bold">
-                  {doctor.firstName?.charAt(0)}{doctor.lastName?.charAt(0)}
+                  {doctor.firstName?.charAt(0) || 'D'}{doctor.lastName?.charAt(0) || 'R'}
                 </div>
               )}
             </div>
@@ -67,7 +81,7 @@ export default function DoctorCard({ doctor, viewMode = 'grid' }) {
               <div className="flex-1">
                 {/* Nom et spécialité */}
                 <h3 className="text-xl font-bold text-gray-900 mb-2">
-                  Dr. {doctor.firstName} {doctor.lastName}
+                  Dr. {doctor.firstName || ''} {doctor.lastName || 'Nom inconnu'}
                 </h3>
                 
                 <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -137,7 +151,10 @@ export default function DoctorCard({ doctor, viewMode = 'grid' }) {
                 </button>
                 
                 {doctor.phone && (
-                  <button className="border border-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-50 transition-colors font-medium flex items-center justify-center">
+                  <button 
+                    onClick={handleCall}
+                    className="border border-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-50 transition-colors font-medium flex items-center justify-center"
+                  >
                     <Phone className="h-4 w-4 mr-2" />
                     Appeler
                   </button>
@@ -163,7 +180,7 @@ export default function DoctorCard({ doctor, viewMode = 'grid' }) {
           />
         ) : (
           <div className="w-full h-48 flex items-center justify-center bg-[#4d89b1] text-white text-4xl font-bold">
-            {doctor.firstName?.charAt(0)}{doctor.lastName?.charAt(0)}
+            {doctor.firstName?.charAt(0) || 'D'}{doctor.lastName?.charAt(0) || 'R'}
           </div>
         )}
       </div>
@@ -171,7 +188,7 @@ export default function DoctorCard({ doctor, viewMode = 'grid' }) {
       <div className="p-6">
         {/* Nom et spécialité */}
         <h3 className="text-lg font-bold text-gray-900 mb-2">
-          Dr. {doctor.firstName} {doctor.lastName}
+          Dr. {doctor.firstName || ''} {doctor.lastName || 'Nom inconnu'}
         </h3>
         
         <div className="mb-3">

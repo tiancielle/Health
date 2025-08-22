@@ -3,7 +3,7 @@ import axios from 'axios';
 
 // Configuration de base d'Axios pour Vite
 const api = axios.create({
-  // 🔥 Correction: utilisation de import.meta.env au lieu de process.env pour Vite
+  //  Correction: utilisation de import.meta.env au lieu de process.env pour Vite
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
   timeout: 10000,
   headers: {
