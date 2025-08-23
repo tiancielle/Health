@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Search, MapPin, Calendar, Clock, Star, Shield, Users, Activity, ChevronRight, Menu, X, Filter, Grid, List } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { searchService } from '../../services/searchService'; // 🔥 Correction du chemin d'import
+import { searchService } from '../../services/searchService'; //  Correction du chemin d'import
 
 // Import des composants
 const SearchForm = ({ onSearch, className = '' }) => {
@@ -11,7 +11,7 @@ const SearchForm = ({ onSearch, className = '' }) => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // 🔥 Recherche avec appel API
+  // Recherche avec appel API
   const handleSearch = async (query = searchQuery, loc = location) => {
     if (!query.trim()) return;
     
@@ -176,7 +176,7 @@ const Loading = () => (
   </div>
 );
 
-// 🔥 Nouveau composant pour afficher les résultats sur la même page
+// Nouveau composant pour afficher les résultats sur la même page
 const SearchResultsSection = ({ searchResults, isSearching, error, onClearSearch, onBookAppointment }) => {
   if (!searchResults && !isSearching) return null;
 
@@ -267,7 +267,7 @@ export default function HealthHomepage() {
     navigate('/auth/register');
   };
 
-  // 🔥 Fonction de recherche connectée au backend - reste sur la même page
+  //  Fonction de recherche connectée au backend - reste sur la même page
   const handleSearch = async (query, location) => {
     if (!query.trim()) return;
     
@@ -277,7 +277,7 @@ export default function HealthHomepage() {
     setError('');
 
     try {
-      // 🔥 Appel API au backend via le service
+      //  Appel API au backend via le service
       const data = await searchService.searchDoctors(query, location);
 
       setSearchResults({
@@ -287,7 +287,7 @@ export default function HealthHomepage() {
         location
       });
 
-      // 🔥 Scroll vers les résultats au lieu de naviguer
+      //  Scroll vers les résultats au lieu de naviguer
       const resultsSection = document.getElementById('search-results');
       if (resultsSection) {
         resultsSection.scrollIntoView({ behavior: 'smooth' });
@@ -311,7 +311,7 @@ export default function HealthHomepage() {
     setSearchQuery('');
     setSearchLocation('');
     setError('');
-    // 🔥 Scroll vers le haut de la page
+    //  Scroll vers le haut de la page
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -330,7 +330,7 @@ export default function HealthHomepage() {
     { name: 'Cardiologist', image: '/images/Cardiologist.PNG', count: '567' },
     { name: 'Dermatologist', image: '/images/dermatologue.PNG', count: '432' },
     { name: 'Gynecologist', image: '/images/Gynecologist.png', count: '389' },
-    { name: 'Ophthalmologist', image: '/images/ophtalmologue.PNG', count: '298' }
+    { name: 'Ophthalmologist', image: '/images/Ophtalmologue.PNG', count: '298' }
   ];
 
   const stats = [
@@ -759,7 +759,7 @@ export default function HealthHomepage() {
                     <a href="#" className="hover:text-gray-700 transition">Cookies</a>
                   </div>
                   <div className="flex items-center space-x-4">
-                    <span>🇺🇸 United States</span>
+                    <span> Morocco </span>
                     <span>•</span>
                     <span>English</span>
                   </div>

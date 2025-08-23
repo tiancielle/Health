@@ -1,3 +1,4 @@
-connect back with front
-update the doctor selction labels
+verrifier le code de doctor card avec claude
 create a page of each doctor infos when clicking on a a doctor after the selection
+
+
