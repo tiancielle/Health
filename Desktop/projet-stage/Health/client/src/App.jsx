@@ -8,7 +8,7 @@ import HomePage from './pages/public/HomePage'
 import NotFoundPage from './pages/public/NotFoundPage'
 import LoginPage from './pages/auth/LoginPage'
 import RegisterPage from './pages/auth/RegisterPage'
-import SearchResults from './pages/patient/SearchResults'
+// import SearchResults from './pages/patient/SearchResults'
 import DoctorProfile from './pages/patient/DoctorProfile'
 import AboutPage from './pages/public/AboutPage'
 import ForDoctorsPage from './pages/public/ForDoctorsPage'
@@ -32,7 +32,7 @@ function App() {
           <Route path='/auth/Register' element={<RegisterPage />}/>
           
           {/* Routes de recherche et médecins */}
-          <Route path='/search' element={<SearchResults />} />
+          {/* <Route path='/search' element={<SearchResults />} /> */}
           <Route path='/doctor/:id' element={<DoctorProfile />} />
           
           {/* Futures routes patients */}
