@@ -54,15 +54,15 @@ export default function DoctorCard({ doctor, viewMode = 'grid' }) {
   const formatAvailability = (nextSlot) => {
     if (!nextSlot) return null;
     const lower = nextSlot.toLowerCase();
-    if (lower.includes('aujourd\'hui') || lower.includes('today')) return "Today";
-    if (lower.includes('demain') || lower.includes('tomorrow')) return "Tomorrow";
-    if (lower.includes('3 jours')) return "In 3 days";
+    if (lower.includes('today') || lower.includes('aujourd\'hui')) return "Today";
+    if (lower.includes('tomorrow') || lower.includes('demain')) return "Tomorrow";
+    if (lower.includes('3 days') || lower.includes('3 jours')) return "In 3 days";
     return nextSlot;
   };
 
   const getBadges = () => {
     const badges = [];
-    if (doctor.hasTelemedicine) {
+    if (doctor.hasTelemedicine || doctor.teleconsultationAvailable) {
       badges.push({ text: 'Teleconsultation', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' });
     }
     if (doctor.gender === 'female' || doctor.isFemale) {
@@ -74,13 +74,31 @@ export default function DoctorCard({ doctor, viewMode = 'grid' }) {
     return badges;
   };
 
+  // Fix pour l'affichage de la ville
+  const getCityName = (doctor) => {
+    // Essayer plusieurs champs possibles pour la ville
+    if (doctor.city) return doctor.city;
+    if (doctor.location) return doctor.location;
+    if (doctor.address) {
+      // Si c'est une adresse complète, essayer d'extraire la ville
+      const addressParts = doctor.address.split(',');
+      if (addressParts.length > 1) {
+        return addressParts[addressParts.length - 1].trim();
+      }
+    }
+    if (doctor.clinics && doctor.clinics.length > 0 && doctor.clinics[0].city) {
+      return doctor.clinics[0].city;
+    }
+    return 'Location not specified';
+  };
+
   if (!doctor || !doctor.id) return null;
 
   const availability = formatAvailability(doctor.nextAvailableSlot);
   const badges = getBadges();
-  const fullName = `Dr. ${doctor.firstName || ''} ${doctor.lastName || 'Unknown'}`;
-  const city = doctor.city || 'Unknown City';
-  const price = doctor.consultationPrice || 'Not specified';
+  const fullName = `Dr. ${doctor.firstName || ''} ${doctor.lastName || 'Unknown'}`.trim();
+  const city = getCityName(doctor); // Utiliser la fonction corrigée
+  const price = doctor.consultationPrice || doctor.consultationFee;
 
   if (viewMode === 'list') {
     return (
@@ -91,7 +109,7 @@ export default function DoctorCard({ doctor, viewMode = 'grid' }) {
               <img src={doctor.profileImage} alt={fullName} className="w-full h-full object-cover rounded-xl" />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#4d89b1] to-[#3d6c91] text-white text-xl font-bold">
-                {doctor.firstName?.charAt(0)}{doctor.lastName?.charAt(0)}
+                {doctor.firstName?.charAt(0) || 'D'}{doctor.lastName?.charAt(0) || 'R'}
               </div>
             )}
           </div>
@@ -151,7 +169,7 @@ export default function DoctorCard({ doctor, viewMode = 'grid' }) {
           </div>
 
           <div className="flex flex-col justify-between">
-            {price !== 'Not specified' && (
+            {price && (
               <div className="text-right mb-4">
                 <div className="text-2xl font-bold text-[#4d89b1]">{price} MAD</div>
                 <div className="text-sm text-gray-600">Consultation</div>
@@ -185,7 +203,7 @@ export default function DoctorCard({ doctor, viewMode = 'grid' }) {
           <img src={doctor.profileImage} alt={fullName} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#4d89b1] to-[#3d6c91] text-white text-3xl font-bold">
-            {doctor.firstName?.charAt(0)}{doctor.lastName?.charAt(0)}
+            {doctor.firstName?.charAt(0) || 'D'}{doctor.lastName?.charAt(0) || 'R'}
           </div>
         )}
       </div>
@@ -232,7 +250,7 @@ export default function DoctorCard({ doctor, viewMode = 'grid' }) {
           </div>
         )}
 
-        {price !== 'Not specified' && (
+        {price && (
           <div className="text-center mb-4">
             <div className="text-xl font-bold text-[#4d89b1]">{price} MAD</div>
             <div className="text-sm text-gray-600">Consultation</div>

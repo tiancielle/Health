@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom'; 
 import Header from '../../components/layout/Header';
 
 export default function LoginPage() {
@@ -9,9 +10,8 @@ export default function LoginPage() {
   const handleSubmit = (e) => {
     e.preventDefault();
     console.log('Connexion avec :', { email, password, role });
-    // Ici, vous ajouterez l'appel API de login
-    
-    // Simulation de succès de connexion - redirection vers home
+
+    // Simulation de connexion
     alert('Connexion réussie ! (simulation)');
     window.location.href = '/';
   };
@@ -20,18 +20,16 @@ export default function LoginPage() {
     window.location.href = '/';
   };
 
-  const handleSignUp = () => {
-    // Pour l'instant, afficher un message
-    alert('Page d\'inscription en cours de développement');
-  };
+
+  // const handleSignUp = () => {
+  //   alert('Page d\'inscription en cours de développement');
+  // };
 
   const handleForgotPassword = () => {
-    // Pour l'instant, afficher un message
     alert('Page de récupération de mot de passe en cours de développement');
   };
 
   return (
-    
     <div
       className="flex min-h-screen bg-gray-50"
       style={{ fontFamily: 'Inter, sans-serif' }}
@@ -46,7 +44,7 @@ export default function LoginPage() {
         <div
           className="absolute inset-0"
           style={{
-            backgroundColor: 'rgba(31, 58, 75, 0.6)', // Overlay bleu foncé #1f3a4b à 60%
+            backgroundColor: 'rgba(31, 58, 75, 0.6)', // Overlay bleu foncé
           }}
         ></div>
         <div className="relative z-10 flex items-center justify-center w-full p-12 text-white text-center">
@@ -81,35 +79,31 @@ export default function LoginPage() {
           </div>
 
           {/* Logo et titre */}
-            <div className="text-center mb-8">
+          <div className="text-center mb-8">
             <div className="flex justify-center mb-4">
-                <img
-                src="/images/Health.PNG" 
+              <img
+                src="/images/Health.PNG"
                 alt="Health Logo"
                 className="h-14 w-14 object-contain"
                 style={{
-                    boxShadow: '0 4px 12px rgba(77, 137, 177, 0.2)',
-                    borderRadius: '1rem',
+                  boxShadow: '0 4px 12px rgba(77, 137, 177, 0.2)',
+                  borderRadius: '1rem',
                 }}
-                />
+              />
             </div>
             <h2
-                className="text-3xl font-bold text-gray-900"
-                style={{ color: '#1f3a4b' }}
+              className="text-3xl font-bold text-gray-900"
+              style={{ color: '#1f3a4b' }}
             >
-                Create Your Account
+              Log In to Your Account
             </h2>
-            <p className="text-gray-600 mt-2">Sign up to book appointments</p>
-            </div>
+            <p className="text-gray-600 mt-2">Sign in to manage your appointments</p>
+          </div>
 
           {/* Formulaire */}
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Email */}
             <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                 Email Address
               </label>
               <input
@@ -120,18 +114,12 @@ export default function LoginPage() {
                 placeholder="Enter your email"
                 required
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base transition"
-                style={{
-                  borderColor: '#e0e0e0',
-                }}
+                style={{ borderColor: '#e0e0e0' }}
               />
             </div>
 
-            {/* Password */}
             <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
                 Password
               </label>
               <input
@@ -142,18 +130,12 @@ export default function LoginPage() {
                 placeholder="Enter your password"
                 required
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base transition"
-                style={{
-                  borderColor: '#e0e0e0',
-                }}
+                style={{ borderColor: '#e0e0e0' }}
               />
             </div>
 
-            {/* Role Selection */}
             <div>
-              <label
-                htmlFor="role"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
+              <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-2">
                 I am a
               </label>
               <select
@@ -161,10 +143,7 @@ export default function LoginPage() {
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
-                style={{
-                  borderColor: '#e0e0e0',
-                  color: '#1f3a4b',
-                }}
+                style={{ borderColor: '#e0e0e0', color: '#1f3a4b' }}
               >
                 <option value="Patient">Patient</option>
                 <option value="Doctor">Doctor</option>
@@ -172,7 +151,6 @@ export default function LoginPage() {
               </select>
             </div>
 
-            {/* Submit Button */}
             <button
               type="submit"
               className="w-full py-3 px-6 rounded-xl font-semibold text-white transition-all duration-200 transform hover:scale-[1.02] hover:shadow-lg"
@@ -185,17 +163,17 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Lien vers Sign Up */}
+
           <div className="mt-8 text-center">
             <p className="text-sm text-gray-600">
               Don't have an account?{' '}
-              <button
-                onClick={handleSignUp}
+              <Link
+                to="/auth/register"  
                 className="font-medium hover:underline"
                 style={{ color: '#4d89b1' }}
               >
                 Sign up as a patient
-              </button>
+              </Link>
             </p>
           </div>
 

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Search, MapPin, Calendar, Clock, Star, Shield, Users, Activity, ChevronRight, Menu, X, Filter, Grid, List } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { searchService } from '../../services/searchService'; //  Correction du chemin d'import
+import { searchService } from '../../services/searchService';
+import DoctorCard from '../../components/common/DoctorCard'; // Import du composant DoctorCard
 
 // Import des composants
 const SearchForm = ({ onSearch, className = '' }) => {
@@ -93,83 +94,6 @@ const SearchForm = ({ onSearch, className = '' }) => {
   );
 };
 
-const DoctorCard = ({ doctor, onBookAppointment }) => {
-  const { firstName, lastName, specialty, rating, reviewCount, profileImage, location, nextAvailableSlot, consultationFee, verified, availableToday } = doctor;
-  const fullName = `Dr. ${firstName} ${lastName}`;
-
-  return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-lg hover:border-[#a0c3e0] transition-all duration-200 cursor-pointer overflow-hidden group">
-      <div className="relative p-6 pb-4">
-        <div className="flex items-start space-x-4">
-          <div className="relative">
-            <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center">
-              {profileImage ? (
-                <img src={profileImage} alt={fullName} className="w-16 h-16 rounded-full object-cover" />
-              ) : (
-                <span className="text-xl font-bold text-gray-600">{firstName[0]}{lastName[0]}</span>
-              )}
-            </div>
-            {verified && (
-              <div className="absolute -top-1 -right-1 bg-blue-500 rounded-full p-1">
-                <Shield className="h-3 w-3 text-white" />
-              </div>
-            )}
-            {availableToday && (
-              <div className="absolute -bottom-1 -right-1 bg-green-500 rounded-full w-3 h-3 border-2 border-white"></div>
-            )}
-          </div>
-          
-          <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-semibold text-gray-900 mb-1 group-hover:text-[#4d89b1] transition-colors">
-              {fullName}
-            </h3>
-            <p className="text-[#4d89b1] font-medium text-sm capitalize">{specialty}</p>
-          </div>
-        </div>
-
-        <div className="flex items-center space-x-2 mt-3">
-          <div className="flex items-center space-x-1">
-            <Star className="h-4 w-4 text-yellow-400 fill-current" />
-            <span className="font-medium text-gray-900 text-sm">{rating}</span>
-          </div>
-          <span className="text-gray-500 text-sm">({reviewCount})</span>
-        </div>
-      </div>
-
-      <div className="px-6 pb-4">
-        <div className="flex items-center space-x-2 text-gray-600 mb-3">
-          <MapPin className="h-4 w-4 flex-shrink-0" />
-          <span className="text-sm truncate">{location}</span>
-        </div>
-
-        <div className="flex items-center space-x-2 text-gray-600 mb-4">
-          <Clock className="h-4 w-4 flex-shrink-0" />
-          <span className="text-sm">{nextAvailableSlot || 'Available soon'}</span>
-        </div>
-
-        {consultationFee && (
-          <div className="text-center mb-4">
-            <span className="text-lg font-semibold text-gray-900">${consultationFee}</span>
-            <span className="text-gray-500 text-sm ml-1">consultation</span>
-          </div>
-        )}
-      </div>
-
-      <div className="px-6 pb-6">
-        <div className="flex space-x-2">
-          <button
-            onClick={() => onBookAppointment(doctor)}
-            className="flex-1 bg-[#4d89b1] text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-[#3d6c91] transition-colors duration-200 flex items-center justify-center space-x-2"
-          >
-            <Calendar className="h-4 w-4" />
-            <span>Book Now</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const Loading = () => (
   <div className="flex items-center justify-center py-12">
     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4d89b1]"></div>
@@ -240,7 +164,7 @@ const SearchResultsSection = ({ searchResults, isSearching, error, onClearSearch
               <DoctorCard
                 key={doctor.id}
                 doctor={doctor}
-                onBookAppointment={onBookAppointment}
+                viewMode="grid"
               />
             ))}
           </div>
@@ -486,7 +410,7 @@ export default function HealthHomepage() {
         />
       </div>
 
-      {/* 🔥 Le reste du contenu s'affiche seulement si aucune recherche active */}
+      {/* Le reste du contenu s'affiche seulement si aucune recherche active */}
       {!searchResults && (
         <>
           {/* Specialties */}
@@ -692,9 +616,6 @@ export default function HealthHomepage() {
                     <h3 className="font-semibold text-gray-900 mb-4">Services</h3>
                     <ul className="space-y-3 text-sm">
                       <li><button onClick={() => handleSearch('', '')} className="text-gray-600 hover:text-[#4d89b1] transition">Find a Doctor</button></li>
-                      <li><a href="#" className="text-gray-600 hover:text-[#4d89b1] transition">Book Appointment</a></li>
-                      <li><a href="#" className="text-gray-600 hover:text-[#4d89b1] transition">Medical Records</a></li>
-                      <li><a href="#" className="text-gray-600 hover:text-[#4d89b1] transition">Telemedicine</a></li>
                       <li><a href="#" className="text-gray-600 hover:text-[#4d89b1] transition">Health Tips</a></li>
                       <li><a href="#" className="text-gray-600 hover:text-[#4d89b1] transition">Emergency Care</a></li>
                     </ul>
@@ -771,4 +692,8 @@ export default function HealthHomepage() {
       )}
     </div>
   );
-}
+} 
+// transition">Book Appointment</a></li>
+//                       <li><a href="#" className="text-gray-600 hover:text-[#4d89b1] transition">Medical Records</a></li>
+//                       <li><a href="#" className="text-gray-600 hover:text-[#4d89b1] transition">Telemedicine</a></li>
+//                       <li><a href="#" className="text-gray-600 hover:text-[#4d89b1]

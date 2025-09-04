@@ -13,11 +13,18 @@ const doctorService = {
     }
   },
 
-  // Obtenir un médecin par ID
+  // Obtenir un médecin par ID - CORRIGÉ
   getDoctorById: async (doctorId) => {
     try {
       const response = await api.get(`/doctors/${doctorId}`);
-      return response.data;
+      console.log('Response from backend:', response.data);
+      
+      // ✅ CORRECTION: Extraire l'objet doctor de la réponse
+      if (response.data.success && response.data.doctor) {
+        return response.data.doctor;
+      } else {
+        throw new Error('Format de réponse invalide');
+      }
     } catch (error) {
       console.error('Erreur lors de la récupération du médecin:', error);
       throw error;

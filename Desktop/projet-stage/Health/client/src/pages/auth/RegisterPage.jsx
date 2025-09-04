@@ -110,7 +110,7 @@ export default function RegisterPage() {
 
           {success && (
             <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-lg text-sm text-center">
-              ✅ Inscription réussie ! Redirection vers la connexion...
+               Inscription réussie ! Redirection vers la connexion...
             </div>
           )}
 
