@@ -1,450 +1,247 @@
 // src/middleware/auth.js
-const jwtConfig = require('../config/jwt');
-const { prisma } = require('../config/database');
+const { verifyToken, extractTokenFromHeader } = require('../config/jwt');
+const authService = require('../services/authService');
 
-// Middleware pour vérifier l'authentification
+/**
+ * Middleware to authenticate JWT token
+ */
 const authenticateToken = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    const token = extractTokenFromHeader(authHeader);
 
     if (!token) {
       return res.status(401).json({
         success: false,
-        message: 'Token d\'accès requis'
+        message: 'Access token is required'
       });
     }
 
-    // Vérifier le token
-    const decoded = jwtConfig.verifyToken(token);
+    // Verify token
+    const decoded = verifyToken(token);
     
-    if (decoded.type !== 'access') {
-      return res.status(401).json({
-        success: false,
-        message: 'Type de token invalide'
-      });
-    }
-
-    // Récupérer l'utilisateur avec Prisma
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        isEmailVerified: true,
-        isActive: true,
-        patient: {
-          select: {
-            id: true
-          }
-        },
-        doctor: {
-          select: {
-            id: true,
-            isVerified: true,
-            specialty: {
-              select: {
-                name: true
-              }
-            }
-          }
-        }
-      }
-    });
-
+    // Get user from database to ensure user still exists and is active
+    const user = await authService.verifyUserById(decoded.id);
+    
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Utilisateur non trouvé'
+        message: 'Invalid or expired token'
       });
     }
 
-    // Vérifier si l'utilisateur est actif
-    if (!user.isActive) {
-      return res.status(401).json({
-        success: false,
-        message: 'Compte désactivé'
-      });
-    }
-
-    // Ajouter les informations utilisateur à la requête
-    req.user = {
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-      isEmailVerified: user.isEmailVerified,
-      patientId: user.patient?.id,
-      doctorId: user.doctor?.id,
-      isDoctorVerified: user.doctor?.isVerified || false,
-      specialty: user.doctor?.specialty?.name
-    };
-
+    // Attach user to request object
+    req.user = user;
     next();
+
   } catch (error) {
-    console.error('Erreur d\'authentification:', error);
-    
-    // Gestion spécifique des erreurs JWT
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({
-        success: false,
-        message: 'Token expiré',
-        code: 'TOKEN_EXPIRED'
-      });
-    }
-    
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({
-        success: false,
-        message: 'Token invalide',
-        code: 'INVALID_TOKEN'
-      });
-    }
-    
+    console.error('Token authentication error:', error);
     return res.status(401).json({
       success: false,
-      message: 'Token invalide'
+      message: 'Invalid or expired token'
     });
   }
 };
 
-// Middleware pour vérifier l'authentification (optionnel)
+/**
+ * Middleware to check if user has required role
+ * @param {string[]} roles - Array of allowed roles
+ */
+const requireRoles = (roles) => {
+  return (req, res, next) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: 'Authentication required'
+        });
+      }
+
+      const userRole = req.user.role;
+      
+      if (!roles.includes(userRole)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. Insufficient permissions.'
+        });
+      }
+
+      next();
+
+    } catch (error) {
+      console.error('Role authorization error:', error);
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied'
+      });
+    }
+  };
+};
+
+/**
+ * Middleware to check if user is a patient
+ */
+const requirePatient = requireRoles(['PATIENT']);
+
+/**
+ * Middleware to check if user is a doctor
+ */
+const requireDoctor = requireRoles(['DOCTOR']);
+
+/**
+ * Middleware to check if user is an admin
+ */
+const requireAdmin = requireRoles(['ADMIN']);
+
+/**
+ * Middleware to allow both doctors and admins
+ */
+const requireDoctorOrAdmin = requireRoles(['DOCTOR', 'ADMIN']);
+
+/**
+ * Optional authentication - doesn't fail if no token provided
+ * but attaches user if valid token is present
+ */
 const optionalAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(' ')[1];
+    const token = extractTokenFromHeader(authHeader);
 
-    if (token) {
-      const decoded = jwtConfig.verifyToken(token);
-      
-      if (decoded.type === 'access') {
-        const user = await prisma.user.findUnique({
-          where: { id: decoded.userId },
-          select: {
-            id: true,
-            email: true,
-            role: true,
-            isEmailVerified: true,
-            isActive: true,
-            patient: { select: { id: true } },
-            doctor: { select: { id: true, isVerified: true } }
-          }
-        });
-
-        if (user && user.isActive) {
-          req.user = {
-            userId: user.id,
-            email: user.email,
-            role: user.role,
-            isEmailVerified: user.isEmailVerified,
-            patientId: user.patient?.id,
-            doctorId: user.doctor?.id,
-            isDoctorVerified: user.doctor?.isVerified || false
-          };
-        }
-      }
+    if (!token) {
+      // No token provided, continue without user
+      req.user = null;
+      return next();
     }
 
-    next();
-  } catch (error) {
-    // En cas d'erreur, on continue sans utilisateur authentifié
-    next();
-  }
-};
-
-// Middleware pour vérifier si l'email est vérifié
-const requireEmailVerification = (req, res, next) => {
-  if (!req.user?.isEmailVerified) {
-    return res.status(403).json({
-      success: false,
-      message: 'Email non vérifié. Veuillez vérifier votre email avant de continuer.',
-      code: 'EMAIL_NOT_VERIFIED'
-    });
-  }
-  next();
-};
-
-// Middleware pour vérifier le rôle utilisateur
-const requireRole = (...roles) => {
-  return (req, res, next) => {
-    if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Authentification requise'
-      });
-    }
-
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({
-        success: false,
-        message: 'Permissions insuffisantes'
-      });
-    }
-
-    next();
-  };
-};
-
-// Middleware pour vérifier les permissions spécifiques
-const requirePermission = (permission) => {
-  return (req, res, next) => {
-    if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Authentification requise'
-      });
-    }
-
-    const userPermissions = getUserPermissions(req.user.role);
+    // Verify token
+    const decoded = verifyToken(token);
     
-    if (!userPermissions.includes(permission)) {
-      return res.status(403).json({
-        success: false,
-        message: 'Permission insuffisante'
-      });
-    }
-
+    // Get user from database
+    const user = await authService.verifyUserById(decoded.id);
+    
+    // Attach user to request (can be null if user not found)
+    req.user = user;
     next();
-  };
+
+  } catch (error) {
+    // Token invalid, continue without user
+    console.error('Optional auth error:', error);
+    req.user = null;
+    next();
+  }
 };
 
-// Fonction pour obtenir les permissions selon le rôle
-const getUserPermissions = (role) => {
-  const permissions = {
-    PATIENT: [
-      'view_own_profile',
-      'update_own_profile',
-      'book_appointments',
-      'view_own_appointments',
-      'view_own_medical_records',
-      'cancel_own_appointments',
-      'rate_doctors'
-    ],
-    DOCTOR: [
-      'view_own_profile',
-      'update_own_profile',
-      'view_appointments',
-      'manage_appointments',
-      'view_patients',
-      'create_medical_records',
-      'view_medical_records',
-      'update_medical_records',
-      'manage_schedule',
-      'view_reviews'
-    ],
-    ADMIN: [
-      'view_all_users',
-      'manage_users',
-      'view_all_appointments',
-      'manage_appointments',
-      'view_analytics',
-      'manage_system',
-      'view_all_medical_records',
-      'manage_doctors',
-      'manage_patients',
-      'verify_doctors',
-      'manage_specialties'
-    ]
-  };
-
-  return permissions[role] || [];
-};
-
-// Middleware pour vérifier l'ownership (l'utilisateur ne peut accéder qu'à ses propres données)
+/**
+ * Middleware to check if the user is accessing their own resource
+ * @param {string} paramName - Parameter name containing the user ID (default: 'userId')
+ */
 const requireOwnership = (paramName = 'userId') => {
   return (req, res, next) => {
-    const resourceUserId = req.params[paramName];
-    
-    // Les admins peuvent accéder à toutes les ressources
-    if (req.user.role === 'ADMIN') {
-      return next();
-    }
-
-    // L'utilisateur ne peut accéder qu'à ses propres ressources
-    if (req.user.userId !== resourceUserId) {
-      return res.status(403).json({
-        success: false,
-        message: 'Accès non autorisé à cette ressource'
-      });
-    }
-
-    next();
-  };
-};
-
-// Middleware pour vérifier l'ownership des patients
-const requirePatientOwnership = (paramName = 'patientId') => {
-  return (req, res, next) => {
-    const resourcePatientId = req.params[paramName];
-    
-    // Les admins et docteurs peuvent accéder aux ressources patients
-    if (['ADMIN', 'DOCTOR'].includes(req.user.role)) {
-      return next();
-    }
-
-    // Le patient ne peut accéder qu'à ses propres ressources
-    if (req.user.patientId !== resourcePatientId) {
-      return res.status(403).json({
-        success: false,
-        message: 'Accès non autorisé à cette ressource patient'
-      });
-    }
-
-    next();
-  };
-};
-
-// Middleware pour vérifier l'ownership des docteurs
-const requireDoctorOwnership = (paramName = 'doctorId') => {
-  return (req, res, next) => {
-    const resourceDoctorId = req.params[paramName];
-    
-    // Les admins peuvent accéder aux ressources docteurs
-    if (req.user.role === 'ADMIN') {
-      return next();
-    }
-
-    // Le docteur ne peut accéder qu'à ses propres ressources
-    if (req.user.doctorId !== resourceDoctorId) {
-      return res.status(403).json({
-        success: false,
-        message: 'Accès non autorisé à cette ressource docteur'
-      });
-    }
-
-    next();
-  };
-};
-
-// Middleware pour vérifier si le docteur est vérifié
-const requireVerifiedDoctor = (req, res, next) => {
-  if (req.user.role !== 'DOCTOR') {
-    return res.status(403).json({
-      success: false,
-      message: 'Accès réservé aux docteurs'
-    });
-  }
-
-  if (!req.user.isDoctorVerified) {
-    return res.status(403).json({
-      success: false,
-      message: 'Profil docteur non vérifié. Contactez l\'administrateur.',
-      code: 'DOCTOR_NOT_VERIFIED'
-    });
-  }
-
-  next();
-};
-
-// Middleware pour loguer les tentatives d'authentification
-const logAuthAttempt = (req, res, next) => {
-  const originalSend = res.send;
-  
-  res.send = function(data) {
-    // Logger uniquement les échecs d'authentification
-    if (res.statusCode === 401 || res.statusCode === 403) {
-      const userAgent = req.get('User-Agent') || 'Unknown';
-      const ip = req.ip || req.connection.remoteAddress || 'Unknown';
-      
-      console.log(`[AUTH FAILURE] ${new Date().toISOString()} - IP: ${ip} - Route: ${req.originalUrl} - Status: ${res.statusCode} - User-Agent: ${userAgent}`);
-    }
-    
-    originalSend.call(this, data);
-  };
-  
-  next();
-};
-
-// Middleware pour détecter les tokens expirés
-const handleExpiredToken = (err, req, res, next) => {
-  if (err.name === 'TokenExpiredError') {
-    return res.status(401).json({
-      success: false,
-      message: 'Token expiré',
-      code: 'TOKEN_EXPIRED'
-    });
-  }
-  
-  if (err.name === 'JsonWebTokenError') {
-    return res.status(401).json({
-      success: false,
-      message: 'Token invalide',
-      code: 'INVALID_TOKEN'
-    });
-  }
-  
-  next(err);
-};
-
-// Middleware pour vérifier l'accès aux rendez-vous
-const requireAppointmentAccess = async (req, res, next) => {
-  try {
-    const appointmentId = req.params.appointmentId || req.params.id;
-    
-    if (!appointmentId) {
-      return res.status(400).json({
-        success: false,
-        message: 'ID de rendez-vous requis'
-      });
-    }
-
-    // Les admins ont accès à tous les rendez-vous
-    if (req.user.role === 'ADMIN') {
-      return next();
-    }
-
-    // Vérifier si l'utilisateur a accès à ce rendez-vous
-    const appointment = await prisma.appointment.findUnique({
-      where: { id: appointmentId },
-      select: {
-        patientId: true,
-        doctorId: true
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: 'Authentication required'
+        });
       }
-    });
 
-    if (!appointment) {
-      return res.status(404).json({
-        success: false,
-        message: 'Rendez-vous non trouvé'
-      });
-    }
+      const resourceUserId = req.params[paramName];
+      const currentUserId = req.user.id;
 
-    const hasAccess = (
-      (req.user.role === 'PATIENT' && req.user.patientId === appointment.patientId) ||
-      (req.user.role === 'DOCTOR' && req.user.doctorId === appointment.doctorId)
-    );
+      // Admins can access any resource
+      if (req.user.role === 'ADMIN') {
+        return next();
+      }
 
-    if (!hasAccess) {
+      // Check if user is accessing their own resource
+      if (resourceUserId !== currentUserId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. You can only access your own resources.'
+        });
+      }
+
+      next();
+
+    } catch (error) {
+      console.error('Ownership check error:', error);
       return res.status(403).json({
         success: false,
-        message: 'Accès non autorisé à ce rendez-vous'
+        message: 'Access denied'
+      });
+    }
+  };
+};
+
+/**
+ * Middleware to check if user account is active
+ */
+const requireActiveUser = (req, res, next) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
       });
     }
 
-    // Ajouter les informations du rendez-vous à la requête
-    req.appointment = appointment;
+    if (!req.user.isActive) {
+      return res.status(403).json({
+        success: false,
+        message: 'Account is deactivated. Please contact support.'
+      });
+    }
+
     next();
+
   } catch (error) {
-    console.error('Erreur lors de la vérification d\'accès au rendez-vous:', error);
-    return res.status(500).json({
+    console.error('Active user check error:', error);
+    return res.status(403).json({
       success: false,
-      message: 'Erreur interne du serveur'
+      message: 'Access denied'
+    });
+  }
+};
+
+/**
+ * Middleware to check if user email is verified
+ */
+const requireVerifiedUser = (req, res, next) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+
+    if (!req.user.isVerified) {
+      return res.status(403).json({
+        success: false,
+        message: 'Email verification required. Please verify your email to continue.'
+      });
+    }
+
+    next();
+
+  } catch (error) {
+    console.error('Email verification check error:', error);
+    return res.status(403).json({
+      success: false,
+      message: 'Access denied'
     });
   }
 };
 
 module.exports = {
   authenticateToken,
+  requireRoles,
+  requirePatient,
+  requireDoctor,
+  requireAdmin,
+  requireDoctorOrAdmin,
   optionalAuth,
-  requireEmailVerification,
-  requireRole,
-  requirePermission,
   requireOwnership,
-  requirePatientOwnership,
-  requireDoctorOwnership,
-  requireVerifiedDoctor,
-  requireAppointmentAccess,
-  logAuthAttempt,
-  handleExpiredToken,
-  getUserPermissions
+  requireActiveUser,
+  requireVerifiedUser
 };

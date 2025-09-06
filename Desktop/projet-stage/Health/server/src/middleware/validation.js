@@ -1,208 +1,217 @@
 // src/middleware/validation.js
-const { body, query, param, validationResult } = require('express-validator');
+const { body, validationResult } = require('express-validator');
 
-// Middleware pour vérifier les résultats de validation
-const validate = (req, res, next) => {
+// Middleware pour vérifier les erreurs de validation
+const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({
       success: false,
-      message: 'Données invalides',
-      errors: errors.array(),
+      message: 'Validation failed',
+      errors: errors.array()
     });
   }
   next();
 };
 
-// Validation pour l'inscription
-const validateRegister = [
-  body('email')
-    .isEmail()
-    .normalizeEmail()
-    .withMessage('Adresse email invalide')
-    .isLength({ max: 255 })
-    .withMessage('L’email ne doit pas dépasser 255 caractères'),
-
-  body('password')
-    .isLength({ min: 8 })
-    .withMessage('Le mot de passe doit contenir au moins 8 caractères')
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
-    .withMessage(
-      'Le mot de passe doit contenir au moins une minuscule, une majuscule, un chiffre et un caractère spécial'
-    )
-    .isLength({ max: 128 })
-    .withMessage('Le mot de passe ne doit pas dépasser 128 caractères'),
-
+// Validation pour l'inscription des utilisateurs
+const validateUserRegistration = [
   body('firstName')
-    .trim()
+    .notEmpty()
+    .withMessage('First name is required')
     .isLength({ min: 2, max: 50 })
-    .withMessage('Le prénom doit contenir entre 2 et 50 caractères')
-    .matches(/^[a-zA-ZÀ-ÿ\s-']+$/)
-    .withMessage('Le prénom ne peut contenir que des lettres, espaces, tirets et apostrophes'),
+    .withMessage('First name must be between 2 and 50 characters')
+    .matches(/^[a-zA-ZÀ-ÿ\s'-]+$/)
+    .withMessage('First name can only contain letters, spaces, hyphens and apostrophes'),
 
   body('lastName')
-    .trim()
+    .notEmpty()
+    .withMessage('Last name is required')
     .isLength({ min: 2, max: 50 })
-    .withMessage('Le nom doit contenir entre 2 et 50 caractères')
-    .matches(/^[a-zA-ZÀ-ÿ\s-']+$/)
-    .withMessage('Le nom ne peut contenir que des lettres, espaces, tirets et apostrophes'),
+    .withMessage('Last name must be between 2 and 50 characters')
+    .matches(/^[a-zA-ZÀ-ÿ\s'-]+$/)
+    .withMessage('Last name can only contain letters, spaces, hyphens and apostrophes'),
 
-  body('role')
-    .optional()
-    .isIn(['patient', 'doctor', 'admin'])
-    .withMessage('Rôle invalide'),
-
-  body('phone')
-    .optional({ nullable: true })
-    .isMobilePhone('fr-FR', { strictMode: false })
-    .withMessage('Numéro de téléphone invalide')
-    .isLength({ max: 20 })
-    .withMessage('Le numéro de téléphone est trop long'),
+  body('email')
+    .isEmail()
+    .withMessage('Please provide a valid email address')
+    .normalizeEmail()
+    .isLength({ max: 255 })
+    .withMessage('Email must not exceed 255 characters'),
 
   body('dateOfBirth')
-    .optional({ nullable: true })
-    .isISO8601({ strict: true })
-    .toDate()
+    .isISO8601()
+    .withMessage('Please provide a valid date of birth (YYYY-MM-DD)')
     .custom((value) => {
+      const birthDate = new Date(value);
       const today = new Date();
-      const minDate = new Date(today.getFullYear() - 120, today.getMonth(), today.getDate());
-      const maxDate = new Date(today.getFullYear() - 13, today.getMonth(), today.getDate());
-
-      if (value > maxDate) {
-        throw new Error('Vous devez avoir au moins 13 ans pour vous inscrire');
-      }
-      if (value < minDate) {
-        throw new Error('Date de naissance invalide (âge supérieur à 120 ans)');
+      const age = today.getFullYear() - birthDate.getFullYear();
+      if (age < 13 || age > 120) {
+        throw new Error('Age must be between 13 and 120 years');
       }
       return true;
     }),
 
+  // ✅ CORRECTION : Role validation pour patients uniquement
+  body('role')
+    .optional()
+    .isIn(['patient'])  // Inscription uniquement pour patients
+    .withMessage('Role must be patient'),
+
+  // ✅ CORRECTION : Password validation simplifiée
+  body('password')
+    .isLength({ min: 8, max: 128 })
+    .withMessage('Password must be between 8 and 128 characters'),
+
+  body('phoneNumber')
+    .optional()
+    .isMobilePhone()
+    .withMessage('Please provide a valid phone number'),
+
+  body('address')
+    .optional()
+    .isLength({ max: 500 })
+    .withMessage('Address must not exceed 500 characters'),
+
+  // ✅ CORRECTION : Gender validation en minuscules
   body('gender')
     .optional()
-    .isIn(['male', 'female'])
-    .withMessage('Genre invalide'),
+    .isIn(['male', 'female'])  // Seulement male et female
+    .withMessage('Gender must be male or female'),
+
+  handleValidationErrors
 ];
 
 // Validation pour la connexion
-const validateLogin = [
+const validateUserLogin = [
   body('email')
     .isEmail()
-    .normalizeEmail()
-    .withMessage('Email invalide'),
+    .withMessage('Please provide a valid email address')
+    .normalizeEmail(),
 
   body('password')
-    .isLength({ min: 1 })
-    .withMessage('Le mot de passe est requis'),
+    .notEmpty()
+    .withMessage('Password is required'),
+
+  handleValidationErrors
 ];
 
-// Validation pour la mise à jour du profil
-const validateUpdateProfile = [
+// Validation pour la mise à jour du profil utilisateur
+const validateUserUpdate = [
   body('firstName')
     .optional()
-    .trim()
     .isLength({ min: 2, max: 50 })
-    .withMessage('Le prénom doit contenir entre 2 et 50 caractères')
-    .matches(/^[a-zA-ZÀ-ÿ\s-']+$/)
-    .withMessage('Le prénom ne peut contenir que des lettres, espaces, tirets et apostrophes'),
+    .withMessage('First name must be between 2 and 50 characters')
+    .matches(/^[a-zA-ZÀ-ÿ\s'-]+$/)
+    .withMessage('First name can only contain letters, spaces, hyphens and apostrophes'),
 
   body('lastName')
     .optional()
-    .trim()
     .isLength({ min: 2, max: 50 })
-    .withMessage('Le nom doit contenir entre 2 et 50 caractères')
-    .matches(/^[a-zA-ZÀ-ÿ\s-']+$/)
-    .withMessage('Le nom ne peut contenir que des lettres, espaces, tirets et apostrophes'),
+    .withMessage('Last name must be between 2 and 50 characters')
+    .matches(/^[a-zA-ZÀ-ÿ\s'-]+$/)
+    .withMessage('Last name can only contain letters, spaces, hyphens and apostrophes'),
 
-  body('phone')
-    .optional({ nullable: true })
-    .isMobilePhone('fr-FR', { strictMode: false })
-    .withMessage('Numéro de téléphone invalide'),
+  body('email')
+    .optional()
+    .isEmail()
+    .withMessage('Please provide a valid email address')
+    .normalizeEmail()
+    .isLength({ max: 255 })
+    .withMessage('Email must not exceed 255 characters'),
 
-  body('dateOfBirth')
-    .optional({ nullable: true })
-    .isISO8601({ strict: true })
-    .toDate()
-    .custom((value) => {
-      const today = new Date();
-      const minDate = new Date(today.getFullYear() - 120, today.getMonth(), today.getDate());
-      const maxDate = new Date(today.getFullYear() - 13, today.getMonth(), today.getDate());
+  body('phoneNumber')
+    .optional()
+    .isMobilePhone()
+    .withMessage('Please provide a valid phone number'),
 
-      if (value > maxDate) {
-        throw new Error('Vous devez avoir au moins 13 ans');
-      }
-      if (value < minDate) {
-        throw new Error('Date de naissance invalide');
-      }
-      return true;
-    }),
+  body('address')
+    .optional()
+    .isLength({ max: 500 })
+    .withMessage('Address must not exceed 500 characters'),
 
   body('gender')
     .optional()
     .isIn(['male', 'female'])
-    .withMessage('Genre invalide'),
+    .withMessage('Gender must be male or female'),
+
+  handleValidationErrors
 ];
 
-// Validation pour la réinitialisation de mot de passe
-const validateResetPassword = [
-  body('password')
-    .isLength({ min: 8 })
-    .withMessage('Le mot de passe doit contenir au moins 8 caractères')
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
-    .withMessage(
-      'Le mot de passe doit contenir au moins une minuscule, une majuscule, un chiffre et un caractère spécial'
-    ),
+// Validation pour les recherches de médecins
+const validateDoctorSearch = [
+  body('speciality')
+    .optional()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Speciality must be between 2 and 100 characters'),
+
+  body('location')
+    .optional()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Location must be between 2 and 100 characters'),
+
+  body('availability')
+    .optional()
+    .isISO8601()
+    .withMessage('Availability must be a valid date'),
+
+  handleValidationErrors
 ];
 
-// Validation pour le changement de mot de passe (avec ancien mot de passe)
-const validateChangePassword = [
-  ...validateResetPassword,
-  body('currentPassword')
-    .exists()
-    .withMessage('Le mot de passe actuel est requis'),
+// Validation pour les rendez-vous
+const validateAppointment = [
+  body('doctorId')
+    .isInt({ min: 1 })
+    .withMessage('Doctor ID must be a positive integer'),
+
+  body('appointmentDate')
+    .isISO8601()
+    .withMessage('Please provide a valid appointment date')
+    .custom((value) => {
+      const appointmentDate = new Date(value);
+      const today = new Date();
+      if (appointmentDate <= today) {
+        throw new Error('Appointment date must be in the future');
+      }
+      return true;
+    }),
+
+  body('appointmentTime')
+    .matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
+    .withMessage('Please provide a valid time in HH:MM format'),
+
+  body('reason')
+    .optional()
+    .isLength({ max: 500 })
+    .withMessage('Reason must not exceed 500 characters'),
+
+  handleValidationErrors
 ];
 
-// Validation pour la demande de réinitialisation (email)
-const validateForgotPassword = [
-  body('email')
-    .isEmail()
-    .normalizeEmail()
-    .withMessage('Email invalide'),
-];
+// Validation pour les avis
+const validateReview = [
+  body('doctorId')
+    .isInt({ min: 1 })
+    .withMessage('Doctor ID must be a positive integer'),
 
-// Validation pour vérifier la disponibilité d’un email
-const validateEmailAvailability = [
-  query('email')
-    .isEmail()
-    .normalizeEmail()
-    .withMessage('Email invalide'),
-];
+  body('rating')
+    .isInt({ min: 1, max: 5 })
+    .withMessage('Rating must be between 1 and 5'),
 
-// Validation pour l’ID utilisateur
-const validateUserId = [
-  param('userId')
-    .isUUID()
-    .withMessage('ID utilisateur invalide'),
-];
+  body('comment')
+    .optional()
+    .isLength({ max: 1000 })
+    .withMessage('Comment must not exceed 1000 characters'),
 
-// Validation pour le token dans l'URL
-const validateToken = [
-  param('token')
-    .exists()
-    .withMessage('Token requis')
-    .isString()
-    .isLength({ min: 64, max: 128 })
-    .withMessage('Token invalide'),
+  handleValidationErrors
 ];
 
 module.exports = {
-  validate,
-  validateRegister,
-  validateLogin,
-  validateUpdateProfile,
-  validateResetPassword,
-  validateChangePassword,
-  validateForgotPassword,
-  validateEmailAvailability,
-  validateUserId,
-  validateToken,
+  validateUserRegistration,
+  validateUserLogin,
+  validateUserUpdate,
+  validateDoctorSearch,
+  validateAppointment,
+  validateReview,
+  handleValidationErrors
 };

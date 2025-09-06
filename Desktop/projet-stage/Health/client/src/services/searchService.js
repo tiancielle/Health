@@ -20,7 +20,11 @@ export const searchService = {
       if (filters.page) params.append('page', filters.page);
       if (filters.limit) params.append('limit', filters.limit);
 
+      console.log('🔍 Recherche avec paramètres:', params.toString());
+      
       const response = await api.get(`/doctors/search?${params.toString()}`);
+      
+      console.log('✅ Réponse recherche reçue:', response.data);
       
       return {
         doctors: response.data.doctors || [],
@@ -31,8 +35,19 @@ export const searchService = {
         hasPrev: response.data.hasPrev || false
       };
     } catch (error) {
-      console.error('Erreur lors de la recherche de médecins:', error);
-      throw new Error('Impossible de rechercher les médecins. Veuillez réessayer.');
+      console.error('❌ Erreur lors de la recherche de médecins:', error);
+      
+      // Diagnostic détaillé de l'erreur
+      if (error.response) {
+        console.error('Statut:', error.response.status);
+        console.error('Data:', error.response.data);
+      } else if (error.request) {
+        console.error('Aucune réponse reçue:', error.request);
+      } else {
+        console.error('Erreur config:', error.message);
+      }
+      
+      throw new Error('Impossible de rechercher les médecins. Vérifiez votre connexion.');
     }
   },
 
@@ -67,8 +82,10 @@ export const searchService = {
 
   // Spécialités disponibles
   getSpecialties: async () => {
+    console.log("getSpecialties")
     try {
       const response = await api.get('/doctors/specialties');
+      
       return response.data.specialties || [];
     } catch (error) {
       console.error('Erreur lors de la récupération des spécialités:', error);

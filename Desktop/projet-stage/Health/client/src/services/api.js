@@ -3,9 +3,9 @@ import axios from 'axios';
 
 // Configuration de base d'Axios pour Vite
 const api = axios.create({
-  //  Correction: utilisation de import.meta.env au lieu de process.env pour Vite
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
   timeout: 10000,
+  withCredentials: true, // AJOUT CRITIQUE pour CORS
   headers: {
     'Content-Type': 'application/json',
   },
@@ -19,7 +19,7 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
     
-    // 🔥 Debug: afficher l'URL utilisée en développement
+    // Debug: afficher l'URL utilisée en développement
     if (import.meta.env.DEV) {
       console.log('API Request URL:', config.baseURL + config.url);
     }
@@ -37,10 +37,16 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    // 🔥 Gestion améliorée des erreurs
+    // Gestion améliorée des erreurs
     if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK') {
       console.error('❌ Impossible de se connecter au serveur backend');
       console.error('Vérifiez que le serveur est démarré sur:', import.meta.env.VITE_API_URL);
+    }
+    
+    // Gestion spécifique des erreurs CORS
+    if (error.message?.includes('CORS')) {
+      console.error('❌ Erreur CORS détectée');
+      console.error('Configuration backend nécessaire pour:', window.location.origin);
     }
     
     // Gestion des erreurs globales
@@ -65,11 +71,12 @@ api.interceptors.response.use(
   }
 );
 
-// 🔥 Debug: afficher la configuration en mode développement
+// Debug: afficher la configuration en mode développement
 if (import.meta.env.DEV) {
   console.log('🔧 API Configuration:');
   console.log('- Base URL:', import.meta.env.VITE_API_URL || 'http://localhost:5000/api');
   console.log('- Environment:', import.meta.env.MODE);
+  console.log('- withCredentials:', true);
 }
 
 export default api;

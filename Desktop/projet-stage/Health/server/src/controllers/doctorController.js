@@ -1,9 +1,9 @@
-// server/src/controllers/doctorController.js
-const { prisma } = require('../config/database'); // ✅ Import correct
+// src/controllers/doctorController.js - VERSION COMPLÈTE
+const { prisma } = require('../config/database');
 
-const doctorController = {
-  // Recherche de médecins
-  searchDoctors: async (req, res) => {
+class DoctorController {
+  
+  async searchDoctors(req, res) {
     try {
       console.log('🔍 Recherche de médecins - paramètres reçus:', req.query);
 
@@ -21,10 +21,15 @@ const doctorController = {
 
       const offset = (parseInt(page) - 1) * parseInt(limit);
       
+      // Vérifier que Prisma est connecté
+      if (!prisma) {
+        throw new Error('Prisma client non initialisé');
+      }
+
       // Construction des filtres de recherche
       let whereClause = {
-        isActive: true,
-        isVerified: true
+        // isActive: true,
+        // isVerified: true
       };
 
       // Recherche par spécialité
@@ -42,9 +47,8 @@ const doctorController = {
         };
       }
 
-      // Construction de la clause WHERE pour User (nom du médecin)
+      // Construction de la clause WHERE pour recherche textuelle
       if (query) {
-        // Recherche dans le nom, prénom ou spécialité
         whereClause.OR = [
           {
             user: {
@@ -130,11 +134,6 @@ const doctorController = {
 
       console.log('🔍 Clause WHERE construite:', JSON.stringify(whereClause, null, 2));
 
-      // Vérifier que Prisma est bien connecté
-      if (!prisma) {
-        throw new Error('Prisma client non initialisé');
-      }
-
       // Exécuter la requête avec Prisma
       const [doctors, total] = await Promise.all([
         prisma.doctor.findMany({
@@ -208,10 +207,9 @@ const doctorController = {
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
-  },
+  }
 
-  // Suggestions de recherche
-  getSearchSuggestions: async (req, res) => {
+  async getSearchSuggestions(req, res) {
     try {
       const { q: query } = req.query;
 
@@ -219,7 +217,6 @@ const doctorController = {
         return res.json({ suggestions: [] });
       }
 
-      // Vérifier que Prisma est connecté
       if (!prisma) {
         throw new Error('Prisma client non initialisé');
       }
@@ -231,7 +228,7 @@ const doctorController = {
             contains: query,
             mode: 'insensitive'
           },
-          isActive: true
+          // isActive: true
         },
         select: {
           specialty: true
@@ -243,23 +240,23 @@ const doctorController = {
       // Suggestions de noms de médecins
       const doctors = await prisma.doctor.findMany({
         where: {
-          isActive: true,
-          user: {
-            OR: [
-              {
-                firstName: {
-                  contains: query,
-                  mode: 'insensitive'
-                }
-              },
-              {
-                lastName: {
-                  contains: query,
-                  mode: 'insensitive'
-                }
-              }
-            ]
-          }
+          // isActive: true,
+          // user: {
+          //   OR: [
+          //     {
+          //       firstName: {
+          //         contains: query,
+          //         mode: 'insensitive'
+          //       }
+          //     },
+          //     {
+          //       lastName: {
+          //         contains: query,
+          //         mode: 'insensitive'
+          //       }
+          //     }
+          //   ]
+          // }
         },
         include: {
           user: {
@@ -283,7 +280,10 @@ const doctorController = {
         }))
       ];
 
-      res.json({ suggestions });
+      res.json({ 
+        success: true,
+        suggestions 
+      });
     } catch (error) {
       console.error('❌ Erreur lors de la récupération des suggestions:', error);
       res.status(500).json({
@@ -291,21 +291,19 @@ const doctorController = {
         message: 'Erreur lors de la récupération des suggestions'
       });
     }
-  },
+  }
 
-  // Médecins populaires
-  getPopularDoctors: async (req, res) => {
+  async getPopularDoctors(req, res) {
     try {
       const { limit = 6 } = req.query;
 
-      // Vérifier que Prisma est connecté
       if (!prisma) {
         throw new Error('Prisma client non initialisé');
       }
 
       const doctors = await prisma.doctor.findMany({
         where: {
-          isActive: true,
+          // isActive: true,
           isVerified: true
         },
         include: {
@@ -348,12 +346,10 @@ const doctorController = {
         message: 'Erreur lors de la récupération des médecins populaires'
       });
     }
-  },
+  }
 
-  // Liste des spécialités
-  getSpecialties: async (req, res) => {
+  async getSpecialties(req, res) {
     try {
-      // Vérifier que Prisma est connecté
       if (!prisma) {
         throw new Error('Prisma client non initialisé');
       }
@@ -361,7 +357,7 @@ const doctorController = {
       const specialtiesWithCount = await prisma.doctor.groupBy({
         by: ['specialty'],
         where: {
-          isActive: true
+          // isActive: true
         },
         _count: {
           id: true
@@ -389,77 +385,242 @@ const doctorController = {
         message: 'Erreur lors de la récupération des spécialités'
       });
     }
-  },
+  }
+  async getAllDoctors(req, res) {
+  try {
+    console.log('Récupération de tous les médecins PostgreSQL...');
 
-  // Détails d'un médecin
-  getDoctorDetails: async (req, res) => {
-    try {
-      const { id } = req.params;
-
-      // Vérifier que Prisma est connecté
-      if (!prisma) {
-        throw new Error('Prisma client non initialisé');
-      }
-
-      const doctor = await prisma.doctor.findUnique({
-        where: {
-          id: id,
-          isActive: true
-        },
-        include: {
-          user: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-              profileImage: true
-            }
+    const doctors = await prisma.doctor.findMany({
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            profileImage: true,
+            phone: true
           }
         }
-      });
+      },
+      orderBy: [
+        { createdAt: 'desc' }
+      ]
+    });
 
-      if (!doctor) {
-        return res.status(404).json({
-          success: false,
-          message: 'Médecin non trouvé'
-        });
-      }
+    console.log(`${doctors.length} médecins trouvés dans PostgreSQL`);
 
-      const doctorDetails = {
-        id: doctor.id,
-        userId: doctor.user?.id,
-        firstName: doctor.user?.firstName || 'Prénom',
-        lastName: doctor.user?.lastName || 'Non renseigné',
-        email: doctor.user?.email,
-        specialty: doctor.specialty || 'Généraliste',
-        rating: doctor.averageRating || 4.5,
-        reviewCount: doctor.totalReviews || 0,
-        profileImage: doctor.user?.profileImage,
-        location: doctor.city || 'Non renseignée',
-        address: doctor.address,
-        phone: doctor.phone,
-        consultationFee: doctor.consultationFee || 50,
-        verified: doctor.isVerified,
-        languages: doctor.languages || [],
-        experience: doctor.experienceYears || 0,
-        education: doctor.education,
-        about: doctor.about,
-        acceptsInsurance: doctor.acceptsInsurance || false
-      };
+    const formattedDoctors = doctors.map(doctor => ({
+      id: doctor.id,
+      firstName: doctor.user?.firstName || 'Prénom',
+      lastName: doctor.user?.lastName || 'Non renseigné',
+      specialty: doctor.specialty || 'Généraliste',
+      rating: doctor.averageRating || 0,
+      reviewCount: doctor.totalReviews || 0,
+      address: doctor.address || 'Adresse non renseignée',
+      city: doctor.city || 'Ville non renseignée',
+      phone: doctor.phone || doctor.user?.phone,
+      consultationFee: doctor.consultationFee || 0,
+      verified: doctor.isVerified,
+      experience: doctor.experienceYears || 0
+    }));
 
-      res.json({
-        success: true,
-        doctor: doctorDetails
-      });
-    } catch (error) {
-      console.error('❌ Erreur lors de la récupération des détails du médecin:', error);
-      res.status(500).json({
+    res.json({
+      success: true,
+      doctors: formattedDoctors,
+      total: formattedDoctors.length,
+      source: 'postgresql_database'
+    });
+
+  } catch (error) {
+    console.error('Erreur récupération médecins:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des médecins'
+    });
+  }
+}
+  // async getDoctorDetails(req, res) {
+  //   try {
+  //     const { id } = req.params;
+      
+  //     if (!id) {
+  //       return res.status(400).json({
+  //         success: false,
+  //         message: 'ID du médecin requis'
+  //       });
+  //     }
+
+  //     if (!prisma) {
+  //       throw new Error('Prisma client non initialisé');
+  //     }
+
+  //     const doctor = await prisma.doctor.findUnique({
+  //       where: {
+  //         id: id,
+  //         // isActive: true
+  //       },
+  //       include: {
+  //         user: {
+  //           select: {
+  //             id: true,
+  //             firstName: true,
+  //             lastName: true,
+  //             email: true,
+  //             profileImage: true
+  //           }
+  //         }
+  //       }
+  //     });
+
+  //     if (!doctor) {
+  //       return res.status(404).json({
+  //         success: false,
+  //         message: 'Médecin non trouvé'
+  //       });
+  //     }
+
+  //     const doctorDetails = {
+  //       id: doctor.id,
+  //       userId: doctor.user?.id,
+  //       firstName: doctor.user?.firstName || 'Prénom',
+  //       lastName: doctor.user?.lastName || 'Non renseigné',
+  //       email: doctor.user?.email,
+  //       specialty: doctor.specialty || 'Généraliste',
+  //       rating: doctor.averageRating || 4.5,
+  //       reviewCount: doctor.totalReviews || 0,
+  //       profileImage: doctor.user?.profileImage,
+  //       location: doctor.city || 'Non renseignée',
+  //       address: doctor.address,
+  //       phone: doctor.phone,
+  //       consultationFee: doctor.consultationFee || 50,
+  //       verified: doctor.isVerified,
+  //       languages: doctor.languages || [],
+  //       experience: doctor.experienceYears || 0,
+  //       education: doctor.education,
+  //       about: doctor.about,
+  //       acceptsInsurance: doctor.acceptsInsurance || false
+  //     };
+
+  //     res.json({
+  //       success: true,
+  //       doctor: doctorDetails
+  //     });
+  //   } catch (error) {
+  //     console.error('❌ Erreur lors de la récupération des détails du médecin:', error);
+  //     res.status(500).json({
+  //       success: false,
+  //       message: 'Erreur lors de la récupération des détails du médecin'
+  //     });
+  //   }
+  // }
+  async getDoctorDetails(req, res) {
+  try {
+    const { id } = req.params;
+    
+    console.log(`🔍 Recherche du médecin avec ID: ${id}`);
+    
+    if (!id) {
+      console.log('❌ ID manquant');
+      return res.status(400).json({
         success: false,
-        message: 'Erreur lors de la récupération des détails du médecin'
+        message: 'ID du médecin requis'
       });
     }
-  }
-};
 
-module.exports = doctorController;
+    if (!prisma) {
+      throw new Error('Prisma client non initialisé');
+    }
+
+    // Recherche du médecin avec ses informations utilisateur
+    const doctor = await prisma.doctor.findUnique({
+      where: {
+        id: id
+        // Suppression des filtres isActive/isVerified pour récupérer TOUS les médecins
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            profileImage: true,
+            phone: true,
+            isActive: true,
+            isVerified: true
+          }
+        }
+      }
+    });
+
+    console.log('🔎 Résultat de la recherche Prisma:', doctor ? 'Médecin trouvé' : 'Aucun médecin trouvé');
+
+    if (!doctor) {
+      console.log(`❌ Aucun médecin trouvé avec l'ID: ${id}`);
+      return res.status(404).json({
+        success: false,
+        message: 'Médecin non trouvé',
+        requestedId: id
+      });
+    }
+
+    // Formatage des données du médecin
+    const doctorDetails = {
+      id: doctor.id,
+      userId: doctor.user?.id,
+      firstName: doctor.user?.firstName || 'Prénom non renseigné',
+      lastName: doctor.user?.lastName || 'Nom non renseigné',
+      fullName: `${doctor.user?.firstName || 'Dr.'} ${doctor.user?.lastName || 'Médecin'}`,
+      email: doctor.user?.email,
+      phone: doctor.phone || doctor.user?.phone,
+      specialty: doctor.specialty || 'Spécialité non renseignée',
+      licenseNumber: doctor.licenseNumber,
+      experienceYears: doctor.experienceYears || 0,
+      
+      // Informations de contact
+      address: doctor.address,
+      city: doctor.city,
+      zipCode: doctor.zipCode,
+      
+      // Informations professionnelles
+      rating: doctor.averageRating || 0,
+      reviewCount: doctor.totalReviews || 0,
+      consultationFee: doctor.consultationFee || 0,
+      
+      // Informations supplémentaires
+      profileImage: doctor.user?.profileImage,
+      education: doctor.education,
+      about: doctor.about,
+      languages: doctor.languages || [],
+      
+      // Status et disponibilité
+      verified: doctor.user?.isVerified || false,
+      acceptsInsurance: doctor.acceptsInsurance || false,
+      availableToday: doctor.isAvailableToday || false,
+      nextAvailableSlot: doctor.nextAvailableSlot,
+      
+      // Métadonnées
+      createdAt: doctor.createdAt,
+      updatedAt: doctor.updatedAt
+    };
+
+    console.log(`✅ Détails du médecin ${doctorDetails.fullName} récupérés avec succès`);
+
+    res.json({
+      success: true,
+      doctor: doctorDetails
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur lors de la récupération des détails du médecin:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des détails du médecin',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+}
+}
+
+module.exports = new DoctorController();

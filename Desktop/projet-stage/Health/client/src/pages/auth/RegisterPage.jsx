@@ -32,12 +32,12 @@ export default function RegisterPage() {
 
     // Validation frontend
     if (formData.password !== formData.confirmPassword) {
-      setError("Les mots de passe ne correspondent pas.");
+      setError("The passwords do not match.");
       return;
     }
 
     if (formData.password.length < 8) {
-      setError("Le mot de passe doit contenir au moins 8 caractères.");
+      setError("The password must contain at least 8 characters.");
       return;
     }
 
@@ -62,7 +62,7 @@ export default function RegisterPage() {
       }, 1500);
 
     } catch (err) {
-      const message = err.response?.data?.message || 'Erreur réseau ou serveur.';
+      const message = err.response?.data?.message || 'Network or server error.';
       setError(message);
     } finally {
       setLoading(false);
@@ -110,7 +110,7 @@ export default function RegisterPage() {
 
           {success && (
             <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-lg text-sm text-center">
-               Inscription réussie ! Redirection vers la connexion...
+              Registration successful! Redirecting to login...
             </div>
           )}
 

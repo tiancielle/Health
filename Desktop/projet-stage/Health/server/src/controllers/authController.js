@@ -1,432 +1,300 @@
+// src/controllers/authController.js
 const authService = require('../services/authService');
-const { validationResult } = require('express-validator');
 
 class AuthController {
-  // Inscription
+  /**
+   * Register new user
+   * POST /api/auth/register
+   */
   async register(req, res) {
     try {
-      // Vérifier les erreurs de validation
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
+      const {
+        firstName,
+        lastName,
+        email,
+        password,
+        role,
+        phone,
+        dateOfBirth,
+        gender
+      } = req.body;
+      
+      // Basic validation
+      if (!firstName || !lastName || !email || !password) {
         return res.status(400).json({
           success: false,
-          message: 'Données invalides',
-          errors: errors.array()
+          message: 'First name, last name, email, and password are required'
         });
       }
 
-      const result = await authService.register(req.body);
-      
-      res.status(201).json({
-        success: true,
-        message: result.message,
-        data: {
-          user: result.user
-        }
+      if (password.length < 8) {
+        return res.status(400).json({
+          success: false,
+          message: 'Password must be at least 8 characters long'
+        });
+      }
+
+      // Email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid email format'
+        });
+      }
+
+      const result = await authService.register({
+        firstName,
+        lastName,
+        email,
+        password,
+        role,
+        phone,
+        dateOfBirth,
+        gender
       });
+
+      res.status(201).json(result);
+
     } catch (error) {
-      console.error('Erreur lors de l\'inscription:', error);
+      console.error('Registration error:', error);
       res.status(400).json({
         success: false,
-        message: error.message
+        message: error.message || 'Registration failed'
       });
     }
   }
 
-  // Connexion
+  /**
+   * User login
+   * POST /api/auth/login
+   */
   async login(req, res) {
     try {
-      // Vérifier les erreurs de validation
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
+      const { email, password } = req.body;
+
+      if (!email || !password) {
         return res.status(400).json({
           success: false,
-          message: 'Données invalides',
-          errors: errors.array()
+          message: 'Email and password are required'
         });
       }
 
-      const { email, password } = req.body;
       const result = await authService.login(email, password);
-      
-      // Définir le refresh token dans un cookie httpOnly
+
+      // Set HTTP-only cookie for refresh token (optional, more secure)
       res.cookie('refreshToken', result.tokens.refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
-        maxAge: 30 * 24 * 60 * 60 * 1000 // 30 jours
+        maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
       });
 
-      res.status(200).json({
-        success: true,
-        message: result.message,
-        data: {
-          user: result.user,
-          accessToken: result.tokens.accessToken,
-          expiresIn: result.tokens.expiresIn
-        }
-      });
+      res.status(200).json(result);
+
     } catch (error) {
-      console.error('Erreur lors de la connexion:', error);
+      console.error('Login error:', error);
       res.status(401).json({
         success: false,
-        message: error.message
+        message: error.message || 'Login failed'
       });
     }
   }
 
-  // Renouvellement du token
+  /**
+   * Refresh access token
+   * POST /api/auth/refresh
+   */
   async refreshToken(req, res) {
     try {
-      const refreshToken = req.cookies.refreshToken || req.body.refreshToken;
-      
-      if (!refreshToken) {
+      const { refreshToken } = req.body;
+      const cookieRefreshToken = req.cookies?.refreshToken;
+
+      const tokenToUse = refreshToken || cookieRefreshToken;
+
+      if (!tokenToUse) {
         return res.status(401).json({
           success: false,
-          message: 'Refresh token manquant'
+          message: 'Refresh token is required'
         });
       }
 
-      const result = await authService.refreshToken(refreshToken);
-      
-      res.status(200).json({
-        success: true,
-        message: result.message,
-        data: {
-          user: result.user,
-          accessToken: result.accessToken
-        }
+      const result = await authService.refreshToken(tokenToUse);
+
+      // Update refresh token cookie
+      res.cookie('refreshToken', result.tokens.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 30 * 24 * 60 * 60 * 1000
       });
+
+      res.status(200).json(result);
+
     } catch (error) {
-      console.error('Erreur lors du renouvellement du token:', error);
+      console.error('Token refresh error:', error);
       res.status(401).json({
         success: false,
-        message: error.message
+        message: error.message || 'Token refresh failed'
       });
     }
   }
 
-  // Déconnexion
-  async logout(req, res) {
-    try {
-      await authService.logout(req.user.userId);
-      
-      // Supprimer le cookie refresh token
-      res.clearCookie('refreshToken');
-      
-      res.status(200).json({
-        success: true,
-        message: 'Déconnexion réussie'
-      });
-    } catch (error) {
-      console.error('Erreur lors de la déconnexion:', error);
-      res.status(400).json({
-        success: false,
-        message: error.message
-      });
-    }
-  }
-
-  // Vérification d'email
-  async verifyEmail(req, res) {
-    try {
-      const { token } = req.params;
-      const result = await authService.verifyEmail(token);
-      
-      res.status(200).json({
-        success: true,
-        message: result.message,
-        data: {
-          user: result.user
-        }
-      });
-    } catch (error) {
-      console.error('Erreur lors de la vérification d\'email:', error);
-      res.status(400).json({
-        success: false,
-        message: error.message
-      });
-    }
-  }
-
-  // Demande de réinitialisation de mot de passe
-  async forgotPassword(req, res) {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          success: false,
-          message: 'Email invalide',
-          errors: errors.array()
-        });
-      }
-
-      const { email } = req.body;
-      const result = await authService.forgotPassword(email);
-      
-      res.status(200).json({
-        success: true,
-        message: result.message
-      });
-    } catch (error) {
-      console.error('Erreur lors de la demande de réinitialisation:', error);
-      res.status(400).json({
-        success: false,
-        message: error.message
-      });
-    }
-  }
-
-  // Réinitialisation du mot de passe
-  async resetPassword(req, res) {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          success: false,
-          message: 'Données invalides',
-          errors: errors.array()
-        });
-      }
-
-      const { token } = req.params;
-      const { password } = req.body;
-      const result = await authService.resetPassword(token, password);
-      
-      res.status(200).json({
-        success: true,
-        message: result.message
-      });
-    } catch (error) {
-      console.error('Erreur lors de la réinitialisation:', error);
-      res.status(400).json({
-        success: false,
-        message: error.message
-      });
-    }
-  }
-
-  // Changement de mot de passe
-  async changePassword(req, res) {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          success: false,
-          message: 'Données invalides',
-          errors: errors.array()
-        });
-      }
-
-      const { currentPassword, newPassword } = req.body;
-      const result = await authService.changePassword(req.user.userId, currentPassword, newPassword);
-      
-      res.status(200).json({
-        success: true,
-        message: result.message
-      });
-    } catch (error) {
-      console.error('Erreur lors du changement de mot de passe:', error);
-      res.status(400).json({
-        success: false,
-        message: error.message
-      });
-    }
-  }
-
-  // Obtenir le profil
+  /**
+   * Get current user profile
+   * GET /api/auth/profile
+   */
   async getProfile(req, res) {
     try {
-      const result = await authService.getProfile(req.user.userId);
-      
-      res.status(200).json({
-        success: true,
-        data: {
-          user: result.user
-        }
-      });
+      const result = await authService.getProfile(req.user.id);
+      res.status(200).json(result);
+
     } catch (error) {
-      console.error('Erreur lors de la récupération du profil:', error);
+      console.error('Get profile error:', error);
       res.status(400).json({
         success: false,
-        message: error.message
+        message: error.message || 'Failed to get profile'
       });
     }
   }
 
-  // Mise à jour du profil
+  /**
+   * Update user profile
+   * PUT /api/auth/profile
+   */
   async updateProfile(req, res) {
     try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          success: false,
-          message: 'Données invalides',
-          errors: errors.array()
-        });
-      }
+      const {
+        firstName,
+        lastName,
+        phone,
+        profileImage
+      } = req.body;
 
-      const result = await authService.updateProfile(req.user.userId, req.body);
-      
-      res.status(200).json({
-        success: true,
-        message: result.message,
-        data: {
-          user: result.user
-        }
+      const result = await authService.updateProfile(req.user.id, {
+        firstName,
+        lastName,
+        phone,
+        profileImage
       });
+
+      res.status(200).json(result);
+
     } catch (error) {
-      console.error('Erreur lors de la mise à jour du profil:', error);
+      console.error('Update profile error:', error);
       res.status(400).json({
         success: false,
-        message: error.message
+        message: error.message || 'Failed to update profile'
       });
     }
   }
 
-  // Renvoyer l'email de vérification
-  async resendVerificationEmail(req, res) {
+  /**
+   * Change password
+   * PUT /api/auth/change-password
+   */
+  async changePassword(req, res) {
     try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
+      const { currentPassword, newPassword } = req.body;
+
+      if (!currentPassword || !newPassword) {
         return res.status(400).json({
           success: false,
-          message: 'Email invalide',
-          errors: errors.array()
+          message: 'Current password and new password are required'
         });
       }
 
+      if (newPassword.length < 8) {
+        return res.status(400).json({
+          success: false,
+          message: 'New password must be at least 8 characters long'
+        });
+      }
+
+      const result = await authService.changePassword(
+        req.user.id,
+        currentPassword,
+        newPassword
+      );
+
+      res.status(200).json(result);
+
+    } catch (error) {
+      console.error('Change password error:', error);
+      res.status(400).json({
+        success: false,
+        message: error.message || 'Failed to change password'
+      });
+    }
+  }
+
+  /**
+   * Request password reset
+   * POST /api/auth/forgot-password
+   */
+  async forgotPassword(req, res) {
+    try {
       const { email } = req.body;
-      const result = await authService.resendVerificationEmail(email);
-      
-      res.status(200).json({
-        success: true,
-        message: result.message
-      });
-    } catch (error) {
-      console.error('Erreur lors du renvoi de l\'email:', error);
-      res.status(400).json({
-        success: false,
-        message: error.message
-      });
-    }
-  }
 
-  // Vérifier la disponibilité d'un email
-  async checkEmailAvailability(req, res) {
-    try {
-      const { email } = req.query;
-      
       if (!email) {
         return res.status(400).json({
           success: false,
-          message: 'Email requis'
+          message: 'Email is required'
         });
       }
 
-      const result = await authService.checkEmailAvailability(email);
-      
-      res.status(200).json({
-        success: true,
-        data: result
-      });
+      const result = await authService.generatePasswordResetToken(email);
+      res.status(200).json(result);
+
     } catch (error) {
-      console.error('Erreur lors de la vérification de disponibilité:', error);
+      console.error('Forgot password error:', error);
       res.status(400).json({
         success: false,
-        message: error.message
+        message: error.message || 'Failed to process password reset request'
       });
     }
   }
 
-  // Désactiver le compte
-  async deactivateAccount(req, res) {
+  /**
+   * Logout user
+   * POST /api/auth/logout
+   */
+  async logout(req, res) {
     try {
-      const result = await authService.deactivateAccount(req.user.userId);
-      
-      // Supprimer le cookie refresh token
+      // Clear refresh token cookie
       res.clearCookie('refreshToken');
-      
+
       res.status(200).json({
         success: true,
-        message: result.message
+        message: 'Logged out successfully'
       });
+
     } catch (error) {
-      console.error('Erreur lors de la désactivation:', error);
+      console.error('Logout error:', error);
       res.status(400).json({
         success: false,
-        message: error.message
+        message: 'Logout failed'
       });
     }
   }
 
-  // Obtenir les informations de l'utilisateur actuel
-  async getCurrentUser(req, res) {
+  /**
+   * Verify token (for testing)
+   * GET /api/auth/verify
+   */
+  async verifyToken(req, res) {
     try {
-      const result = await authService.getProfile(req.user.userId);
-      
       res.status(200).json({
         success: true,
-        data: {
-          user: result.user,
-          permissions: this.getUserPermissions(result.user.role)
-        }
+        user: req.user,
+        message: 'Token is valid'
       });
+
     } catch (error) {
-      console.error('Erreur lors de la récupération de l\'utilisateur:', error);
-      res.status(400).json({
+      console.error('Token verification error:', error);
+      res.status(401).json({
         success: false,
-        message: error.message
-      });
-    }
-  }
-
-  // Obtenir les permissions selon le rôle
-  getUserPermissions(role) {
-    const permissions = {
-      patient: [
-        'view_own_profile',
-        'update_own_profile',
-        'book_appointments',
-        'view_own_appointments',
-        'view_own_medical_records'
-      ],
-      doctor: [
-        'view_own_profile',
-        'update_own_profile',
-        'view_appointments',
-        'manage_appointments',
-        'view_patients',
-        'create_medical_records',
-        'view_medical_records'
-      ],
-      admin: [
-        'view_all_users',
-        'manage_users',
-        'view_all_appointments',
-        'manage_appointments',
-        'view_analytics',
-        'manage_system'
-      ]
-    };
-
-    return permissions[role] || [];
-  }
-
-  // Obtenir les statistiques (admin uniquement)
-  async getAuthStats(req, res) {
-    try {
-      const result = await authService.getAuthStats();
-      
-      res.status(200).json({
-        success: true,
-        data: result
-      });
-    } catch (error) {
-      console.error('Erreur lors de la récupération des statistiques:', error);
-      res.status(400).json({
-        success: false,
-        message: error.message
+        message: 'Token verification failed'
       });
     }
   }
