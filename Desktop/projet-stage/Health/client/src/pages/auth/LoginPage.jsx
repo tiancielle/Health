@@ -1,29 +1,45 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom'; 
+import { Link, useNavigate } from 'react-router-dom';
 import Header from '../../components/layout/Header';
+import { useAuth } from '../../context/AuthContext.jsx';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('Patient');
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log('Connexion avec :', { email, password, role });
+  const { login } = useAuth();
+  const navigate = useNavigate();
 
-    // Simulation de connexion
-    alert('Connexion réussie ! (simulation)');
-    window.location.href = '/';
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    // Simulation de connexion — crée un utilisateur fictif
+    const mockUser = {
+      id: Date.now(),
+      name: email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1), // Ex: "john" -> "John"
+      email,
+      role,
+    };
+
+    try {
+      // Appel à la fonction login du contexte
+      await login(email, password, role);
+
+      // Stocker l'utilisateur dans localStorage (déjà fait par AuthContext, mais on s'assure)
+      localStorage.setItem('user', JSON.stringify(mockUser));
+
+      // Rediriger vers la page d'accueil
+      navigate('/');
+    } catch (error) {
+      console.error("Erreur de connexion simulée:", error);
+      alert('Erreur lors de la connexion. Veuillez réessayer.');
+    }
   };
 
   const handleBackToHome = () => {
-    window.location.href = '/';
+    navigate('/');
   };
-
-
-  // const handleSignUp = () => {
-  //   alert('Page d\'inscription en cours de développement');
-  // };
 
   const handleForgotPassword = () => {
     alert('Page de récupération de mot de passe en cours de développement');
@@ -44,7 +60,7 @@ export default function LoginPage() {
         <div
           className="absolute inset-0"
           style={{
-            backgroundColor: 'rgba(31, 58, 75, 0.6)', // Overlay bleu foncé
+            backgroundColor: 'rgba(31, 58, 75, 0.6)',
           }}
         ></div>
         <div className="relative z-10 flex items-center justify-center w-full p-12 text-white text-center">
@@ -163,12 +179,11 @@ export default function LoginPage() {
             </button>
           </form>
 
-
           <div className="mt-8 text-center">
             <p className="text-sm text-gray-600">
               Don't have an account?{' '}
               <Link
-                to="/auth/register"  
+                to="/auth/register"
                 className="font-medium hover:underline"
                 style={{ color: '#4d89b1' }}
               >

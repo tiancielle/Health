@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Search, MapPin, Calendar, Clock, Star, Shield, Users, Activity, ChevronRight, Menu, X, Filter, Grid, List } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { searchService } from '../../services/searchService';
-import DoctorCard from '../../components/common/DoctorCard'; // Import du composant DoctorCard
+import DoctorCard from '../../components/common/DoctorCard';
+import Header from '../../components/layout/Header';
 
 // Import des composants
 const SearchForm = ({ onSearch, className = '' }) => {
@@ -176,7 +177,7 @@ const SearchResultsSection = ({ searchResults, isSearching, error, onClearSearch
 };
 
 export default function HealthHomepage() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  // const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchResults, setSearchResults] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -187,11 +188,11 @@ export default function HealthHomepage() {
   const handleLoginClick = () => {
     navigate('/auth/login');
   };
-
+  // onClick={handleSignUpClick}
   const handleSignUpClick = () => {
     navigate('/auth/register');
   };
-
+  // onClick={handleLoginClick}
   //  Fonction de recherche connectée au backend - reste sur la même page
   const handleSearch = async (query, location) => {
     if (!query.trim()) return;
@@ -266,15 +267,15 @@ export default function HealthHomepage() {
   ];
 
   const testimonials = [
-    { name: 'Marie Dubois', rating: 5, text: 'Very intuitive interface, I booked an appointment in just a few clicks!', specialty: 'Patient' },
-    { name: 'Dr. Jean Martin', rating: 5, text: 'Excellent platform for managing my consultations and patients.', specialty: 'Cardiologist' },
-    { name: 'Sophie Laurent', rating: 5, text: 'My medical records are finally centralized and secure.', specialty: 'Patient' }
+    { name: 'Aicha Azzaoui', rating: 5, text: 'Very intuitive interface, I booked an appointment in just a few clicks!', specialty: 'Patient' },
+    { name: 'Dr. Omar Chraibi', rating: 5, text: 'Excellent platform for managing my consultations and patients.', specialty: 'Cardiologist' },
+    { name: 'Dr. Fatima Alami', rating: 5, text: 'My medical records are finally centralized and secure.', specialty: 'Pédiatrie' }
   ];
 
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-50">
+      {/* <header className="bg-white border-b border-gray-100 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
@@ -367,8 +368,8 @@ export default function HealthHomepage() {
             </div>
           )}
         </div>
-      </header>
-
+      </header> */}
+      <Header onLogoClick={clearSearch} />
       {/* Hero avec image de fond */}
       <section
         className="py-20 relative"

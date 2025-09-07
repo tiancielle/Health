@@ -1,6 +1,7 @@
 // client/src/App.jsx
 import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
 import './App.css';
 
 // Public Pages
@@ -16,30 +17,45 @@ import RegisterPage from './pages/auth/RegisterPage';
 
 // Patient Pages
 import DoctorProfile from './pages/patient/DoctorProfile';
+import PatientProfile from './pages/patient/PatientProfile';
+import PatientDashboardPage from './pages/patient/PatientDashboardPage';
+import AppointmentsPage from './pages/patient/AppointmentsPage';
+import MedicalRecordsPage from './pages/patient/MedicalRecordsPage';
+import MessagesPage from './pages/patient/MessagesPage';
 
 function App() {
   return (
     <div className="App">
-      <BrowserRouter>
-        <Routes>
-          {/* ==================== PUBLIC ROUTES ==================== */}
-          <Route path="/" element={<HomePage />} />
-          <Route path="/about-us" element={<AboutPage />} />
-          <Route path="/for-doctors" element={<ForDoctorsPage />} />
-          <Route path="/contact" element={<ContactPage />} />
-          <Route path="/doctor/:id" element={<DoctorProfile />} />
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            {/* ==================== PUBLIC ROUTES ==================== */}
+            <Route path="/" element={<HomePage />} />
+            <Route path="/about-us" element={<AboutPage />} />
+            <Route path="/for-doctors" element={<ForDoctorsPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/doctor/:id" element={<DoctorProfile />} />
 
-          {/* ==================== AUTHENTICATION ROUTES ==================== */}
-          <Route path="/auth" element={<Navigate to="/auth/login" replace />} />
-          <Route path="/auth/login" element={<LoginPage />} />
-          <Route path="/auth/register" element={<RegisterPage />} />
-          <Route path="/auth/Login" element={<Navigate to="/auth/login" replace />} />
-          <Route path="/auth/Register" element={<Navigate to="/auth/register" replace />} />
+            {/* ==================== AUTHENTICATION ROUTES ==================== */}
+            <Route path="/auth" element={<Navigate to="/auth/login" replace />} />
+            <Route path="/auth/login" element={<LoginPage />} />
+            <Route path="/auth/register" element={<RegisterPage />} />
+            <Route path="/auth/Login" element={<Navigate to="/auth/login" replace />} />
+            <Route path="/auth/Register" element={<Navigate to="/auth/register" replace />} />
 
-          {/* ==================== CATCH-ALL ROUTE ==================== */}
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
-      </BrowserRouter>
+            {/* ==================== PATIENT ROUTES ==================== */}
+            <Route path="/patient" element={<Navigate to="/patient/dashboard" replace />} />
+            <Route path="/patient/dashboard" element={<PatientDashboardPage />} />
+            <Route path="/patient/profile" element={<PatientProfile />} />
+            <Route path="/patient/appointments" element={<AppointmentsPage />} />
+            <Route path="/patient/records" element={<MedicalRecordsPage />} />
+            <Route path="/patient/messages" element={<MessagesPage />} />
+
+            {/* ==================== CATCH-ALL ROUTE ==================== */}
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
     </div>
   );
 }
