@@ -19,11 +19,13 @@ import {
   Shield,
   CheckCircle,
   ExternalLink,
-  AlertCircle
+  AlertCircle,
+  X
 } from 'lucide-react';
 import Header from '../../components/layout/Header';
 import Loading from '../../components/ui/Loading';
 import doctorService from '../../services/doctorService';
+import appointmentService from '../../services/appointmentService';
 import { isAuthenticated, redirectToLogin } from '../../utils/authUtils';
 
 export default function DoctorProfile() {
@@ -34,6 +36,10 @@ export default function DoctorProfile() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('info');
+  const [showMessage, setShowMessage] = useState(false);
+  const [messageText, setMessageText] = useState('');
+  const [messageType, setMessageType] = useState('info');
+  const [bookedSlots, setBookedSlots] = useState(new Set()); // Pour tracker les créneaux réservés
 
   useEffect(() => {
     const loadDoctor = async () => {
@@ -116,17 +122,128 @@ export default function DoctorProfile() {
     }
   }, [id]);
 
+  // Charger les créneaux déjà réservés
+  useEffect(() => {
+    if (doctor) {
+      const appointments = appointmentService.getAllAppointments();
+      const doctorName = `Dr. ${doctor.firstName} ${doctor.lastName}`;
+      
+      const reserved = new Set();
+      appointments.upcoming.forEach(apt => {
+        if (apt.doctor === doctorName && apt.status !== 'cancelled') {
+          reserved.add(`${apt.date}-${apt.time}`);
+        }
+      });
+      
+      setBookedSlots(reserved);
+    }
+  }, [doctor]);
+
+  const showNotification = (text, type = 'info') => {
+    setMessageText(text);
+    setMessageType(type);
+    setShowMessage(true);
+    
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+      setShowMessage(false);
+    }, 5000);
+  };
+
   const handleBookAppointment = () => {
     // Check if user is authenticated
     if (!isAuthenticated()) {
-      // Store the current page URL to redirect back after login
       const currentUrl = window.location.pathname;
       redirectToLogin(currentUrl);
       return;
     }
     
-    // If authenticated, navigate to booking page
-    navigate(`/book-appointment/${doctor.id}`);
+    // Show message to choose a time from schedule
+    showNotification("Choose a time that suits you on the schedule", "info");
+    
+    // Switch to schedule tab to help user find available times
+    setActiveTab('schedule');
+  };
+
+  const handleTimeSlotClick = (day, time) => {
+    // Check if user is authenticated
+    if (!isAuthenticated()) {
+      redirectToLogin();
+      return;
+    }
+
+    // Générer une date réaliste pour le jour sélectionné
+    const today = new Date();
+    let appointmentDate = new Date(today);
+    
+    const dayNames = ['Today', 'Tomorrow', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const dayIndex = dayNames.indexOf(day);
+    
+    if (dayIndex === 0) { // Today
+      // Garder la date d'aujourd'hui
+    } else if (dayIndex === 1) { // Tomorrow
+      appointmentDate.setDate(today.getDate() + 1);
+    } else {
+      // Pour les autres jours, prendre le prochain occurrence de ce jour
+      appointmentDate.setDate(today.getDate() + dayIndex);
+    }
+
+    const dateString = appointmentDate.toISOString().split('T')[0]; // Format YYYY-MM-DD
+    const slotKey = `${dateString}-${time}`;
+    
+    // Vérifier si le créneau est déjà réservé
+    if (bookedSlots.has(slotKey)) {
+      showNotification("This time slot is already booked. Please choose another time.", "info");
+      return;
+    }
+
+    try {
+      // Créer le rendez-vous
+      const doctorName = `Dr. ${doctor.firstName} ${doctor.lastName}`;
+      const specialty = formatSpecialty(doctor.specialty);
+      
+      const appointmentData = {
+        doctor: doctorName,
+        specialty: specialty,
+        date: dateString,
+        time: time,
+        location: doctor.clinics && doctor.clinics.length > 0 
+          ? doctor.clinics[0].name 
+          : 'Medical Clinic',
+        address: doctor.clinics && doctor.clinics.length > 0 
+          ? doctor.clinics[0].address 
+          : doctor.address || `${doctor.city || 'Casablanca'}`,
+        phone: doctor.clinics && doctor.clinics.length > 0 
+          ? doctor.clinics[0].phone 
+          : doctor.phone || '+212 5 22 XX XX XX',
+        notes: `Appointment booked on ${new Date().toLocaleDateString()} via online system`
+      };
+
+      // Sauvegarder le rendez-vous
+      const newAppointment = appointmentService.createAppointment(appointmentData);
+      
+      // Mettre à jour la liste des créneaux réservés
+      const newBookedSlots = new Set(bookedSlots);
+      newBookedSlots.add(slotKey);
+      setBookedSlots(newBookedSlots);
+
+      // Show success message
+      showNotification("Appointment booked successfully!", "success");
+      
+      console.log('Appointment created:', newAppointment);
+      
+      // Optionnel: Rediriger vers la page des rendez-vous après un délai
+      setTimeout(() => {
+        // Demander si l'utilisateur veut voir ses rendez-vous
+        if (window.confirm("Would you like to view all your appointments?")) {
+          navigate('/patient/appointments');
+        }
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Error creating appointment:', error);
+      showNotification("Error booking appointment. Please try again.", "error");
+    }
   };
 
   const formatSpecialty = (specialty) => {
@@ -141,6 +258,52 @@ export default function DoctorProfile() {
       'psychiatrist': 'Psychiatrist'
     };
     return specialties[specialty] || specialty;
+  };
+
+  // Message Notification Component
+  const MessageNotification = () => {
+    if (!showMessage) return null;
+
+    const getNotificationColor = (type) => {
+      switch (type) {
+        case 'success':
+          return 'bg-green-50 border-green-200 text-green-800';
+        case 'error':
+          return 'bg-red-50 border-red-200 text-red-800';
+        default:
+          return 'bg-blue-50 border-blue-200 text-blue-800';
+      }
+    };
+
+    const getNotificationIcon = (type) => {
+      switch (type) {
+        case 'success':
+          return <CheckCircle className="h-5 w-5 mr-2 text-green-600" />;
+        case 'error':
+          return <AlertCircle className="h-5 w-5 mr-2 text-red-600" />;
+        default:
+          return <AlertCircle className="h-5 w-5 mr-2 text-blue-600" />;
+      }
+    };
+
+    return (
+      <div className="fixed top-4 right-4 z-50 max-w-md">
+        <div className={`rounded-lg p-4 shadow-lg border ${getNotificationColor(messageType)}`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              {getNotificationIcon(messageType)}
+              <span className="font-medium">{messageText}</span>
+            </div>
+            <button
+              onClick={() => setShowMessage(false)}
+              className="ml-3 text-gray-400 hover:text-gray-600"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   // Interactive Map Component
@@ -166,7 +329,7 @@ export default function DoctorProfile() {
           </h3>
         </div>
         
-        {/* Interactive map simulation with modern design */}
+        {/* Interactive map simulation */}
         <div className="relative">
           <div className="w-full h-80 bg-gradient-to-br from-blue-50 to-indigo-100 relative overflow-hidden">
             {/* Map elements simulation */}
@@ -345,6 +508,9 @@ export default function DoctorProfile() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
+      
+      {/* Message Notification */}
+      <MessageNotification />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Back button */}
@@ -578,24 +744,52 @@ export default function DoctorProfile() {
                         <div key={dayIndex} className="border border-gray-200 rounded-lg p-4">
                           <h4 className="font-medium text-gray-900 mb-3">{day}</h4>
                           <div className="space-y-2">
-                            {['09:00', '14:30', '16:00'].map((time, timeIndex) => (
-                              <button
-                                key={timeIndex}
-                                onClick={() => {
-                                  if (!isAuthenticated()) {
-                                    redirectToLogin();
-                                  } else {
-                                    handleBookAppointment();
-                                  }
-                                }}
-                                className="w-full text-left px-3 py-2 text-sm border border-gray-200 rounded hover:bg-[#4d89b1] hover:text-white transition-colors"
-                              >
-                                {time}
-                              </button>
-                            ))}
+                            {['09:00', '14:30', '16:00'].map((time, timeIndex) => {
+                              const today = new Date();
+                              let appointmentDate = new Date(today);
+                              
+                              if (dayIndex === 1) { // Tomorrow
+                                appointmentDate.setDate(today.getDate() + 1);
+                              } else if (dayIndex > 1) { // Other days
+                                appointmentDate.setDate(today.getDate() + dayIndex);
+                              }
+
+                              const dateString = appointmentDate.toISOString().split('T')[0];
+                              const slotKey = `${dateString}-${time}`;
+                              const isBooked = bookedSlots.has(slotKey);
+
+                              return (
+                                <button
+                                  key={timeIndex}
+                                  onClick={() => handleTimeSlotClick(day, time)}
+                                  disabled={isBooked}
+                                  className={`w-full text-left px-3 py-2 text-sm border rounded transition-colors ${
+                                    isBooked
+                                      ? 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed'
+                                      : 'border-gray-200 hover:bg-[#4d89b1] hover:text-white cursor-pointer'
+                                  }`}
+                                >
+                                  {time} {isBooked && '(Booked)'}
+                                </button>
+                              );
+                            })}
                           </div>
                         </div>
                       ))}
+                    </div>
+                    
+                    {/* Legend */}
+                    <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center space-x-4 text-sm">
+                        <div className="flex items-center">
+                          <div className="w-4 h-4 border border-gray-200 rounded mr-2"></div>
+                          <span>Available</span>
+                        </div>
+                        <div className="flex items-center">
+                          <div className="w-4 h-4 bg-gray-100 border border-gray-300 rounded mr-2"></div>
+                          <span>Already booked</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}

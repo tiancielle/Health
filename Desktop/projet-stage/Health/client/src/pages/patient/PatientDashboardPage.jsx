@@ -25,11 +25,11 @@ export default function PatientDashboardPage() {
     upcomingAppointments: [
       {
         id: 1,
-        doctor: 'Dr. Sarah Johnson',
+        doctor: 'Dr. Karim El Fassi',
         specialty: 'Cardiologue',
         date: '2025-09-15',
         time: '14:30',
-        location: 'Cabinet Médical Central',
+        location: '123 Avenue Mohammed V, Casablanca',
       },
       {
         id: 2,
@@ -43,8 +43,8 @@ export default function PatientDashboardPage() {
     recentMessages: [
       {
         id: 1,
-        doctor: 'Dr. Sarah Johnson',
-        message: 'Vos derniers résultats sont très encourageants...',
+        doctor: 'Dr. Karim El Fassi',
+        message: 'Your latest results are very encouraging...',
         timestamp: '2025-09-07T10:30:00',
         unread: true,
       },
@@ -59,9 +59,9 @@ export default function PatientDashboardPage() {
     recentDocuments: [
       {
         id: 1,
-        title: 'Ordonnance - Hypertension',
+        title: 'Prescription - Hypertension',
         type: 'prescription',
-        doctor: 'Dr. Sarah Johnson',
+        doctor: 'Dr. Karim El Fassi',
         date: '2025-09-05',
       },
       {
@@ -82,16 +82,16 @@ export default function PatientDashboardPage() {
       {
         id: 1,
         type: 'appointment',
-        title: 'Rendez-vous demain',
-        message: "N'oubliez pas votre RDV avec Dr. Sarah Johnson à 14h30",
+        title: 'See you tomorrow',
+        message: "Don't forget your appointment with Dr. Karim El Fassi at 2:30 PM.",
         timestamp: '2025-09-07T08:00:00',
         urgent: true,
       },
       {
         id: 2,
         type: 'medication',
-        title: 'Prise de médicament',
-        message: 'Il est temps de prendre votre Amlodipine',
+        title: 'Medication intake',
+        message: 'It is time to take your Amlodipine',
         timestamp: '2025-09-07T08:00:00',
         urgent: false,
       },
@@ -149,9 +149,9 @@ export default function PatientDashboardPage() {
         {/* Welcome Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Bonjour, {currentUser?.name} 👋
+            Hi, {currentUser?.name} 
           </h1>
-          <p className="text-gray-600">Voici un aperçu de votre santé aujourd'hui</p>
+          <p className="text-gray-600">Here is an overview of your health today</p>
         </div>
 
         {/* Notifications urgentes */}
@@ -161,7 +161,7 @@ export default function PatientDashboardPage() {
               <div className="flex items-start space-x-3">
                 <Bell className="h-5 w-5 text-red-600 mt-0.5" />
                 <div className="flex-1">
-                  <h3 className="font-semibold text-red-800 mb-1">Notifications importantes</h3>
+                  <h3 className="font-semibold text-red-800 mb-1">Important notificationss</h3>
                   {dashboardData.notifications
                     .filter((n) => n.urgent)
                     .map((notification) => (
@@ -187,7 +187,7 @@ export default function PatientDashboardPage() {
                 <p className="text-2xl font-bold text-gray-900">
                   {dashboardData.upcomingAppointments.length}
                 </p>
-                <p className="text-gray-600">RDV à venir</p>
+                <p className="text-gray-600">Appointment to come</p>
               </div>
             </div>
           </div>
@@ -202,7 +202,7 @@ export default function PatientDashboardPage() {
                 <p className="text-2xl font-bold text-gray-900">
                   {dashboardData.recentMessages.filter((m) => m.unread).length}
                 </p>
-                <p className="text-gray-600">Messages non lus</p>
+                <p className="text-gray-600">Unread messages</p>
               </div>
             </div>
           </div>
@@ -217,7 +217,7 @@ export default function PatientDashboardPage() {
                 <p className="text-2xl font-bold text-gray-900">
                   {dashboardData.recentDocuments.length}
                 </p>
-                <p className="text-gray-600">Nouveaux documents</p>
+                <p className="text-gray-600">New documents</p>
               </div>
             </div>
           </div>
@@ -292,7 +292,7 @@ export default function PatientDashboardPage() {
                 ) : (
                   <div className="text-center py-8">
                     <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">Aucun rendez-vous à venir</p>
+                    <p className="text-gray-500">No upcoming appointments</p>
                     <button className="mt-4 bg-[#4d89b1] text-white px-6 py-2 rounded-lg hover:bg-[#3d6c91] transition flex items-center space-x-2 mx-auto">
                       <Plus className="h-4 w-4" />
                       <span>Prendre rendez-vous</span>
@@ -306,12 +306,12 @@ export default function PatientDashboardPage() {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200">
               <div className="p-6 border-b border-gray-200">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-semibold text-gray-900">Messages récents</h2>
+                  <h2 className="text-xl font-semibold text-gray-900">Recent messages</h2>
                   <button
                     onClick={() => navigate('/patient/messages')}
                     className="text-[#4d89b1] hover:text-[#3d6c91] font-medium flex items-center space-x-1"
                   >
-                    <span>Voir tout</span>
+                    <span>See all</span>
                     <ChevronRight className="h-4 w-4" />
                   </button>
                 </div>
@@ -347,7 +347,7 @@ export default function PatientDashboardPage() {
                 ) : (
                   <div className="text-center py-8">
                     <MessageCircle className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">Aucun message récent</p>
+                    <p className="text-gray-500">No recent message</p>
                   </div>
                 )}
               </div>
@@ -359,7 +359,7 @@ export default function PatientDashboardPage() {
             {/* Signes vitaux */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200">
               <div className="p-6 border-b border-gray-200">
-                <h2 className="text-xl font-semibold text-gray-900">Signes vitaux</h2>
+                <h2 className="text-xl font-semibold text-gray-900">Vital signs</h2>
               </div>
               <div className="p-6">
                 <div className="space-y-4">
@@ -402,12 +402,12 @@ export default function PatientDashboardPage() {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200">
               <div className="p-6 border-b border-gray-200">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-semibold text-gray-900">Documents récents</h2>
+                  <h2 className="text-xl font-semibold text-gray-900">Recent documents</h2>
                   <button
                     onClick={() => navigate('/patient/records')}
                     className="text-[#4d89b1] hover:text-[#3d6c91] font-medium flex items-center space-x-1"
                   >
-                    <span>Voir tout</span>
+                    <span>See all</span>
                     <ChevronRight className="h-4 w-4" />
                   </button>
                 </div>
@@ -434,7 +434,7 @@ export default function PatientDashboardPage() {
                 ) : (
                   <div className="text-center py-6">
                     <FileText className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-                    <p className="text-gray-500 text-sm">Aucun document récent</p>
+                    <p className="text-gray-500 text-sm">No recent message</p>
                   </div>
                 )}
               </div>
@@ -443,7 +443,7 @@ export default function PatientDashboardPage() {
             {/* Actions rapides */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200">
               <div className="p-6 border-b border-gray-200">
-                <h2 className="text-xl font-semibold text-gray-900">Actions rapides</h2>
+                <h2 className="text-xl font-semibold text-gray-900">Quick actions</h2>
               </div>
               <div className="p-6">
                 <div className="grid grid-cols-2 gap-3">
@@ -466,14 +466,14 @@ export default function PatientDashboardPage() {
                     className="flex flex-col items-center p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition"
                   >
                     <FileText className="h-6 w-6 text-purple-600 mb-2" />
-                    <span className="text-sm font-medium text-purple-800">Dossiers</span>
+                    <span className="text-sm font-medium text-purple-800">Files</span>
                   </button>
                   <button
                     onClick={() => navigate('/patient/profile')}
                     className="flex flex-col items-center p-4 bg-orange-50 hover:bg-orange-100 rounded-lg transition"
                   >
                     <User className="h-6 w-6 text-orange-600 mb-2" />
-                    <span className="text-sm font-medium text-orange-800">Profil</span>
+                    <span className="text-sm font-medium text-orange-800">Profile</span>
                   </button>
                 </div>
               </div>

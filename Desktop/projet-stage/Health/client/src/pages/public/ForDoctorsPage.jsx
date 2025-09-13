@@ -149,7 +149,7 @@ export default function ForDoctorsPage() {
             </button>
             <button
               onClick={() => navigate('/contact')}
-              className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white/10 transition"
+              className="border-2 border-[rgb(67,119,153)] text-[rgb(67,119,153)] px-8 py-3 rounded-lg font-semibold hover:bg-[rgb(67,119,153)]/10 transition"
             >
               Contact Us
             </button>

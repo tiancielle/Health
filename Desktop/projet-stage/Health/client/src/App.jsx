@@ -22,6 +22,7 @@ import PatientDashboardPage from './pages/patient/PatientDashboardPage';
 import AppointmentsPage from './pages/patient/AppointmentsPage';
 import MedicalRecordsPage from './pages/patient/MedicalRecordsPage';
 import MessagesPage from './pages/patient/MessagesPage';
+import MedicalRecordDetail from './pages/patient/MedicalRecordDetail';
 
 function App() {
   return (
@@ -50,6 +51,7 @@ function App() {
             <Route path="/patient/appointments" element={<AppointmentsPage />} />
             <Route path="/patient/records" element={<MedicalRecordsPage />} />
             <Route path="/patient/messages" element={<MessagesPage />} />
+            <Route path="/patient/records/:id" element={<MedicalRecordDetail />} />
 
             {/* ==================== CATCH-ALL ROUTE ==================== */}
             <Route path="*" element={<NotFoundPage />} />

@@ -1,39 +1,74 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+// client/src/pages/auth/LoginPage.jsx
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import Header from '../../components/layout/Header';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { getReturnUrl, debugAuthState } from '../../utils/authUtils';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('Patient');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const { login } = useAuth();
+  const { login, isAuthenticated, currentUser } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Debug
+  useEffect(() => {
+    debugAuthState();
+  }, []);
+
+  // Rediriger si déjà connecté
+  useEffect(() => {
+    if (isAuthenticated && isAuthenticated()) {
+      const returnUrl = getReturnUrl();
+      console.log('User already authenticated, redirecting to:', returnUrl);
+      navigate(returnUrl, { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
+
+  // Gérer les paramètres de redirection de l'URL
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const redirectParam = searchParams.get('redirect');
+    
+    if (redirectParam) {
+      localStorage.setItem('returnUrl', decodeURIComponent(redirectParam));
+      console.log('Redirect parameter found:', decodeURIComponent(redirectParam));
+    }
+  }, [location]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    // Simulation de connexion — crée un utilisateur fictif
-    const mockUser = {
-      id: Date.now(),
-      name: email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1), // Ex: "john" -> "John"
-      email,
-      role,
-    };
+    setLoading(true);
+    setError('');
 
     try {
+      console.log('Attempting login with:', { email, role });
+      
       // Appel à la fonction login du contexte
-      await login(email, password, role);
-
-      // Stocker l'utilisateur dans localStorage (déjà fait par AuthContext, mais on s'assure)
-      localStorage.setItem('user', JSON.stringify(mockUser));
-
-      // Rediriger vers la page d'accueil
-      navigate('/');
+      const result = await login(email, password, role);
+      
+      if (result && result.success) {
+        console.log('Login successful:', result.user);
+        
+        // Obtenir l'URL de retour
+        const returnUrl = getReturnUrl();
+        console.log('Redirecting to:', returnUrl);
+        
+        // Rediriger vers l'URL de retour ou tableau de bord approprié
+        navigate(returnUrl, { replace: true });
+      } else {
+        throw new Error('Login failed');
+      }
     } catch (error) {
-      console.error("Erreur de connexion simulée:", error);
-      alert('Erreur lors de la connexion. Veuillez réessayer.');
+      console.error("Erreur de connexion:", error);
+      setError('Invalid credentials. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -116,6 +151,13 @@ export default function LoginPage() {
             <p className="text-gray-600 mt-2">Sign in to manage your appointments</p>
           </div>
 
+          {/* Message d'erreur */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-600 text-sm">{error}</p>
+            </div>
+          )}
+
           {/* Formulaire */}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
@@ -129,7 +171,8 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email"
                 required
-                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base transition"
+                disabled={loading}
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base transition disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ borderColor: '#e0e0e0' }}
               />
             </div>
@@ -145,7 +188,8 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
                 required
-                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base transition"
+                disabled={loading}
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base transition disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ borderColor: '#e0e0e0' }}
               />
             </div>
@@ -158,7 +202,8 @@ export default function LoginPage() {
                 id="role"
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
+                disabled={loading}
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ borderColor: '#e0e0e0', color: '#1f3a4b' }}
               >
                 <option value="Patient">Patient</option>
@@ -169,13 +214,21 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              className="w-full py-3 px-6 rounded-xl font-semibold text-white transition-all duration-200 transform hover:scale-[1.02] hover:shadow-lg"
+              disabled={loading}
+              className="w-full py-3 px-6 rounded-xl font-semibold text-white transition-all duration-200 transform hover:scale-[1.02] hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               style={{
                 backgroundColor: '#4d89b1',
                 boxShadow: '0 4px 15px rgba(77, 137, 177, 0.3)',
               }}
             >
-              Log In
+              {loading ? (
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
+                  Logging in...
+                </div>
+              ) : (
+                'Log In'
+              )}
             </button>
           </form>
 
